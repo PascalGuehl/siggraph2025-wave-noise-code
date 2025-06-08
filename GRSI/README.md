@@ -1,6 +1,6 @@
-# Multi-Dimensional Procedural Wave Noise - Demos
+# GRSI (Graphics Replicability Stamp Initiative)
 
-## GRSI (Graphics Replicability Stamp Initiative)
+## Replicability
 
 https://www.replicabilitystamp.org/
 
