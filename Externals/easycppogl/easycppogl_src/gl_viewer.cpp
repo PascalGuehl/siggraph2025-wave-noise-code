@@ -80,7 +80,7 @@ GLViewer::GLViewer():
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
 #else
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 #endif
 
 	window_ = glfwCreateWindow(720, 720, "EOGL", nullptr, nullptr);
