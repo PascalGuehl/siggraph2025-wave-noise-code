@@ -1,0 +1,9 @@
+# 
+# Wavefront material file
+
+newmtl body
+Ka 0.5 0.5 0.5
+Kd 0.5 0.5 0.5
+Ks 0 0 0
+illum 2
+Ns 0

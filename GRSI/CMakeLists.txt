@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(Demos LANGUAGES CXX)
+project(GRSI LANGUAGES CXX)
 
 set( easycppogl_DIR "../Externals/easycppogl/Install/EasyCppOGL/lib/cmake/easycppogl")
 find_package(easycppogl REQUIRED)
 
 set(CMAKE_DEBUG_POSTFIX "_d")
 
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/Install/Demos" CACHE PATH "Install path" FORCE)
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/Install/GRSI" CACHE PATH "Install path" FORCE)
 
 macro(compile)
   add_executable(${ARGV0} ${ARGV0}.cpp)
@@ -39,8 +39,7 @@ endmacro()
 #add_definitions("-DDEF_DATA_PATH=${CMAKE_CURRENT_SOURCE_DIR}/../Data")
 
 set( demos_list 
-  demo_gl_01
-  wave_noise_01
+  grsi_01
 )
 
 foreach(example ${demos_list})
@@ -48,5 +47,5 @@ foreach(example ${demos_list})
 endforeach()
 
 # nice vs solution
-set_target_properties(${demos_list} PROPERTIES FOLDER Demos)
+set_target_properties(${demos_list} PROPERTIES FOLDER GRSI)
 
