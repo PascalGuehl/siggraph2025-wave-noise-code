@@ -1,26 +1,69 @@
-//
-#include "fbo.h"
-#include "gl_viewer.h"
-#include "mesh.h"
-#include "shader_program.h"
-#include "texture1d.h"
-#include "texture3d.h"
+/*
+ * Multi - Dimensional Procedural Wave Noise - Demos
+ *
+ * ACM Transactions on Graphics(TOG), Vol. 44, No. 4, Article XXX, August 2025
+ *
+ * SIGGRAPH 2025, August 2025, Vancouver, Canada
+ *
+ * Pascal Guehl(1), Rémi Allègre(2), Guillaume Gilet(3), Basile Sauvage(2), Marie - Paule Cani(1), Jean - Michel Dischler(2)
+ *
+ * (1) LIX, Ecole Polytechnique, CNRS, Institut Polytechnique de Paris, France
+ * (2) ICube, Université de Strasbourg, CNRS, France
+ * (3) Université de Sherbrooke, Canada
+ */
 
+/**
+ * @version 1.0
+ */
+
+/******************************************************************************
+ ******************************* INCLUDE SECTION ******************************
+ ******************************************************************************/
+
+// EasyCppOGL
+#include <fbo.h>
+#include <gl_viewer.h>
+#include <mesh.h>
+#include <shader_program.h>
+#include <texture1d.h>
+#include <texture3d.h>
+
+// STL
 #include <iostream>
 
+// GLFW
 #include <GLFW/glfw3.h>
+
+/******************************************************************************
+ ****************************** NAMESPACE SECTION *****************************
+ ******************************************************************************/
+
+using namespace EZCOGL;
+
+/******************************************************************************
+ ************************* DEFINE AND CONSTANT SECTION ************************
+ ******************************************************************************/
 
 #define macro_str(s) #s
 #define macro_xstr(s) macro_str(s)
 #define DATA_PATH std::string(macro_xstr(MYAPP_DATA_PATH))
 #define SHADERS_PATH std::string(macro_xstr(MYAPP_SHADERS_PATH))
 
+// NVIDIA Optimus
+// A key feature of Optimus configurations is to support rendering applications using NVIDIA High Performance Graphics while displaying on monitors connected to the Integrated Graphics.
+// https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
 extern "C"
 {
 	__declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-using namespace EZCOGL;
+/******************************************************************************
+ ***************************** TYPE DEFINITION ********************************
+ ******************************************************************************/
+
+/******************************************************************************
+ ***************************** METHOD DEFINITION ******************************
+ ******************************************************************************/
 
 //////////////////////////////////////////////////////////////////////////////////////
 //  FOR USING FFT 1D
@@ -366,7 +409,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////
 
 static const std::string p_vert = R"(
-#version 430
+#version 460
 layout(location=1) uniform mat4 projectionMatrix;
 layout(location=2) uniform mat4 viewMatrix;
 layout(location=3) uniform mat3 normalMatrix;
@@ -397,7 +440,7 @@ void main()
 )";
 
 static const std::string p_frag = R"(
-#version 430
+#version 460
 precision highp float;
 in vec3 Po;
 in vec3 No;
@@ -776,8 +819,15 @@ public:
 	void precomputePlanarWaveFromFFT1D(double* A, int N, int pow_2);
 };
 
-// MAIN c'est juste creer un viewer
-int main(int, char**)
+/******************************************************************************
+ * Main entry program
+ *
+ * @param pArgc Number of arguments
+ * @param pArgv List of arguments
+ *
+ * @return flag telling whether or not it succeeds
+ ******************************************************************************/
+int main( int, char** )
 {
 	Viewer v;
 
@@ -788,6 +838,9 @@ int main(int, char**)
 	return v.launch3d();
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 Viewer::Viewer() : nbMeshParts(0)
 {
 	tX = 0.0;
@@ -818,6 +871,9 @@ Viewer::Viewer() : nbMeshParts(0)
 	precomputePlanarWave(4.0);
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::init_ogl()
 {
 	prg_p = ShaderProgram::create({ {GL_VERTEX_SHADER, p_vert}, {GL_FRAGMENT_SHADER, p_frag} }, "prog");
@@ -844,6 +900,9 @@ void Viewer::init_ogl()
 	texd->alloc(NARRAY, GL_RGB8, fsd_cr);
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::draw_ogl()
 {
 	GLMat4 sc = Transfo::scale(2.5);
@@ -929,6 +988,9 @@ void Viewer::draw_ogl()
 	}
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::interface_ogl()
 {
 	ImGui::Begin("Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
@@ -964,6 +1026,9 @@ void Viewer::interface_ogl()
 	ImGui::End();
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::createIsotropicProceduralEnergyDistri()
 {
 	const int FF = 4;
@@ -1011,6 +1076,9 @@ void Viewer::createIsotropicProceduralEnergyDistri()
 	}
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::precomputePlanarWave(float scale)
 {
 	int ii, k;
@@ -1065,6 +1133,9 @@ void Viewer::precomputePlanarWave(float scale)
 	}
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 double* Viewer::MakeSpatialWaveProfile(int pow_2)
 {
 	double rphases[MAX_FREQ];
@@ -1244,6 +1315,9 @@ double* Viewer::MakeSpatialWaveProfile(int pow_2)
 	return A;
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void Viewer::precomputePlanarWaveFromFFT1D(double* A, int N, int pow_2)
 {
 	int ii, k;
