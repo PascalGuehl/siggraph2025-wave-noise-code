@@ -181,8 +181,8 @@ void WaveNoise::createIsotropicProceduralEnergyDistri()
  ******************************************************************************/
 void WaveNoise::precomputePlanarWave( float scale )
 {
-	int Nfreq = MAX_FREQ;
-	int finit = 0;
+	const int Nfreq = MAX_FREQ;
+	const int finit = 0;
 	vmax = 0.0;
 	
 	// Generate random phases in [-1;1]
@@ -199,15 +199,16 @@ void WaveNoise::precomputePlanarWave( float scale )
 		fs[ ii ][ 2 ] = 0.0;
 		for ( int k = finit; k < finit + Nfreq; k++ )
 		{
-			// random phase
+			// Random phase
 			const double phase = 2.0 * M_PI * rphases[ k ]; // inoise(2 * k, 0, 0);
 
+			// Frequency
 			const double freq = 1.0 / (float)NARRAY;
 
-			// get user defined amplitude
+			// Amplitude: get user defined amplitude
 			const double ampli = spectralEnergyDistribution[ 0 ][ k ];
 
-			// compute sum real and imaginary parts
+			// Compute sum real and imaginary parts
 			const double vcos = ampli * cos( scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0 );
 			fs[ ii ][ 0 ] += vcos;
 			const double vsin = ampli * sin( scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0 );
@@ -440,61 +441,74 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 /******************************************************************************
  * ...
  ******************************************************************************/
-void WaveNoise::precomputePlanarWaveFromFFT1D(double* A, int N, int pow_2)
+void WaveNoise::precomputePlanarWaveFromFFT1D( double* A, int N, int pow_2 )
 {
-	int ii, k;
 	vmax = 0.0;
 
-	hvArray1<hvPair<double, double>>* F = new hvArray1<hvPair<double, double>>(N, hvPair<double, double>(0.0, 0.0));
-	for (ii = 0; ii < N; ii++)
-		F->update(ii, hvPair<double, double>(A[ii], 0.0));
-	printf("compute FFT of profile: N=%d, pow2=%d...\n", N, pow_2);
-	hvArray1<double>::fft(*F, pow_2, 1, 0, false);
-	printf("done.\n");
-	printf("compute complex wave front...\n");
-	int Nfreq = MAX_FREQ;
-	int finit = 0;
-	for (ii = 0; ii < NARRAY; ii++)
+	hvArray1< hvPair< double, double >>* F = new hvArray1< hvPair< double, double >>( N, hvPair< double, double >( 0.0, 0.0 ) );
+	for ( int ii = 0; ii < N; ii++ )
+		F->update( ii, hvPair< double, double >( A[ ii ], 0.0 ) );
+
+	printf( "compute FFT of profile: N=%d, pow2=%d...\n", N, pow_2 );
+	hvArray1<double>::fft( *F, pow_2, 1, 0, false );
+	printf( "done.\n" );
+
+	printf( "compute complex wave front...\n" );
+	const int Nfreq = MAX_FREQ;
+	const int finit = 0;
+	// Generate planar wave, i.e. 1D profile
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fs[ii][0] = 0.0;
-		fs[ii][1] = 0.0;
-		fs[ii][2] = 0.0;
-		for (k = finit; k < finit + 2 * Nfreq; k++)
+		fs[ ii ][ 0 ] = 0.0;
+		fs[ ii ][ 1 ] = 0.0;
+		fs[ ii ][ 2 ] = 0.0;
+		for ( int k = finit; k < finit + 2 * Nfreq; k++ )
 		{
-			// random phase
-			double phase = F->get(k).phase();
+			// Random phase
+			double phase = F->get( k ).phase();
+
+			// Frequency
 			double freq = 1.0 / (float)(NARRAY);
 
-			// get user defined amplitude
+			// Amplitude: get user defined amplitude
 			double ampli = F->get(k).mod();
-			// compute sum real and imaginary parts
-			double vcos = ampli * cos(2.0 * M_PI * (double)ii * freq * (double)k + phase);
-			fs[ii][0] += vcos;
-			double vsin = ampli * sin(2.0 * M_PI * (double)ii * freq * (double)k + phase);
-			fs[ii][1] += vsin;
+
+			// Compute sum real and imaginary parts
+			double vcos = ampli * cos( 2.0 * M_PI * (double)ii * freq * (double)k + phase );
+			fs[ ii ][ 0 ] += vcos;
+			double vsin = ampli * sin( 2.0 * M_PI * (double)ii * freq * (double)k + phase );
+			fs[ ii ][ 1 ] += vsin;
 		}
-		if (abs(fs[ii][0]) > vmax)
-			vmax = abs(fs[ii][0]);
-		if (abs(fs[ii][1]) > vmax)
-			vmax = abs(fs[ii][1]);
+
+		// Update max wave value
+		if ( abs( fs[ ii ][ 0 ] ) > vmax )
+			vmax = abs( fs[ ii ][ 0 ] );
+		if ( abs( fs[ ii ][ 1 ] ) > vmax )
+			vmax = abs( fs[ ii ][ 1 ] );
 	}
-	if (vmax < 1.0)
+	
+	// Clamp max value
+	if ( vmax < 1.0 )
 		vmax = 1.0;
 	// Normalize
-	for (ii = 0; ii < NARRAY; ii++)
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fs[ii][0] /= vmax;
-		// printf("%d=%g\n", ii, fs[ii][0]);
-		fs_cr[3 * ii + 0] = (unsigned char)(fs[ii][0] * 127.0 + 128.0);
-		fs[ii][1] /= vmax;
-		fs_cr[3 * ii + 1] = (unsigned char)(fs[ii][1] * 127.0 + 128.0);
-		fs_cr[3 * ii + 2] = 0;
+		// Value in [-1;1]
+		fs[ ii ][ 0 ] /= vmax;
+		// printf( "%d=%g\n", ii, fs[ii][0] );
+		fs[ ii ][ 1 ] /= vmax;
+
+		// Value in [0;255] for unsigned char RGB texture (8 bits)
+		fs_cr[ 3 * ii + 0 ] = (unsigned char)(fs[ii][0] * 127.0 + 128.0);
+		fs_cr[ 3 * ii + 1 ] = (unsigned char)(fs[ii][1] * 127.0 + 128.0);
+		fs_cr[ 3 * ii + 2 ] = 0;
 	}
-	// Gradient
-	for (ii = 0; ii < NARRAY; ii++)
+
+	// Pre-compute gradient (finite difference)
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fsd_cr[3 * ii + 0] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][0] - fs[(ii + 1) % NARRAY][0]) * 64.0 + 128.0);
-		fsd_cr[3 * ii + 1] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][1] - fs[(ii + 1) % NARRAY][1]) * 64.0 + 128.0);
-		fsd_cr[3 * ii + 2] = 0;
+		fsd_cr[ 3 * ii + 0 ] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][0] - fs[(ii + 1) % NARRAY][0]) * 64.0 + 128.0);
+		fsd_cr[ 3 * ii + 1 ] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][1] - fs[(ii + 1) % NARRAY][1]) * 64.0 + 128.0);
+		fsd_cr[ 3 * ii + 2 ] = 0;
 	}
 }

@@ -439,15 +439,6 @@ void main()
 //  MAIN  VIEWER
 //////////////////////////////////////////////////////////////////////////////////////
 
-// precision of the pre-computed wave (sampling rate)
-const int NARRAY = 512;
-const int MAX_FREQ = NARRAY / 2; // half of half because of FFT symetry and Nyquist
-const int NDIR = 20;			 // 40+50;
-
-int FREQ_LOW = 1, sFREQ_LOW = 1;
-int FREQ_HIGH = 32, sFREQ_HIGH = 32;
-float Ffreq_low = 1.0 / 64.0, Ffreq_high = 32.0 / 64.0;
-
 // Creation du VIEWER
 class Viewer : public GLViewer
 {
@@ -490,9 +481,11 @@ int main( int, char** )
  ******************************************************************************/
 Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
 {
+	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
 	waveNoise->initialize();
 
+	// Dafault parameters value
 	waveNoise->tX = 0.0;
 	waveNoise->tY = 0.0;
 	waveNoise->tZ = 0.0;
@@ -505,7 +498,7 @@ Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
 	waveNoise->Zoom = 0.2f;
 	waveNoise->Time = 0.0f;
 	waveNoise->item_current = 0; // Gaussian
-	waveNoise->Oper = 0;		  // Isowave
+	waveNoise->Oper = 0;		 // Isowave
 	waveNoise->old_item = 0;
 	waveNoise->Ratio = 64.0f;
 	waveNoise->iRatio = 6;
@@ -516,14 +509,15 @@ Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
 	waveNoise->Proba = 0.5;
 	waveNoise->NRec = 3;
 	waveNoise->Anisodd = 0.5;
-
+	
+	// Precompute 1D profile wave(s)
 	// iso3dangles();
 	waveNoise->createIsotropicProceduralEnergyDistri();
 	waveNoise->precomputePlanarWave( 4.0 );
 }
 
 /******************************************************************************
- * ...
+ * Callback for custom initialization function
  ******************************************************************************/
 void Viewer::init_ogl()
 {
@@ -544,15 +538,15 @@ void Viewer::init_ogl()
 
 	tex = Texture1D::create();
 	// tex->update(0, N, wprofile);
-	tex->alloc(NARRAY, GL_RGB8, waveNoise->fs_cr.data());
+	tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
 
 	texd = Texture1D::create();
 	// tex->update(0, N, wprofile);
-	texd->alloc(NARRAY, GL_RGB8, waveNoise->fsd_cr.data());
+	texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 }
 
 /******************************************************************************
- * ...
+ * Callback for custom rendering/compute function
  ******************************************************************************/
 void Viewer::draw_ogl()
 {
@@ -640,7 +634,7 @@ void Viewer::draw_ogl()
 }
 
 /******************************************************************************
- * ...
+ * Callback for custom GUI (graphical user interface)
  ******************************************************************************/
 void Viewer::interface_ogl()
 {
@@ -676,4 +670,3 @@ void Viewer::interface_ogl()
 	// ImGui::SetWindowSize({ 0, 0 });
 	ImGui::End();
 }
-
