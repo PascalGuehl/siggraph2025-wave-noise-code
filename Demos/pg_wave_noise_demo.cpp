@@ -1,0 +1,679 @@
+/*
+ * Multi - Dimensional Procedural Wave Noise - Demos
+ *
+ * ACM Transactions on Graphics(TOG), Vol. 44, No. 4, Article XXX, August 2025
+ *
+ * SIGGRAPH 2025, August 2025, Vancouver, Canada
+ *
+ * Pascal Guehl(1), Rémi Allègre(2), Guillaume Gilet(3), Basile Sauvage(2), Marie - Paule Cani(1), Jean - Michel Dischler(2)
+ *
+ * (1) LIX, Ecole Polytechnique, CNRS, Institut Polytechnique de Paris, France
+ * (2) ICube, Université de Strasbourg, CNRS, France
+ * (3) Université de Sherbrooke, Canada
+ */
+
+/**
+ * @version 1.0
+ */
+
+/******************************************************************************
+ ******************************* INCLUDE SECTION ******************************
+ ******************************************************************************/
+
+// EasyCppOGL
+#include <fbo.h>
+#include <gl_viewer.h>
+#include <mesh.h>
+#include <shader_program.h>
+#include <texture1d.h>
+#include <texture3d.h>
+
+// STL
+#include <iostream>
+
+// GLFW
+#include <GLFW/glfw3.h>
+
+// Project
+#include "WaveNoise.h"
+
+/******************************************************************************
+ ****************************** NAMESPACE SECTION *****************************
+ ******************************************************************************/
+
+using namespace EZCOGL;
+
+/******************************************************************************
+ ************************* DEFINE AND CONSTANT SECTION ************************
+ ******************************************************************************/
+
+#define macro_str(s) #s
+#define macro_xstr(s) macro_str(s)
+#define DATA_PATH std::string(macro_xstr(MYAPP_DATA_PATH))
+#define SHADERS_PATH std::string(macro_xstr(MYAPP_SHADERS_PATH))
+
+// NVIDIA Optimus
+// A key feature of Optimus configurations is to support rendering applications using NVIDIA High Performance Graphics while displaying on monitors connected to the Integrated Graphics.
+// https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
+extern "C"
+{
+	__declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+
+/******************************************************************************
+ ***************************** TYPE DEFINITION ********************************
+ ******************************************************************************/
+
+/******************************************************************************
+ ***************************** METHOD DEFINITION ******************************
+ ******************************************************************************/
+
+//////////////////////////////////////////////////////////////////////////////////////
+//  SHADERS
+//////////////////////////////////////////////////////////////////////////////////////
+
+static const std::string p_vert = R"(
+#version 460
+layout(location=1) uniform mat4 projectionMatrix;
+layout(location=2) uniform mat4 viewMatrix;
+layout(location=3) uniform mat3 normalMatrix;
+
+layout(location=1) in vec3 position_in;
+layout(location=2) in vec3 normal_in;
+layout(location=3) in vec3 text_in;
+layout(location = 4) in vec3 tangents_in;
+
+out vec3 Po;
+out vec3 No;
+out vec3 Co;
+out vec3 NCo, TCo;
+out mat3 NoMat;
+
+
+void main()
+{
+	Co = vec3(0.5)+position_in*0.5;
+	NCo = normal_in;
+	TCo = tangents_in;
+	No = normalMatrix * normal_in;
+	NoMat = normalMatrix;
+	vec4 Po4 = viewMatrix * vec4(position_in,1);
+	Po = Po4.xyz;
+	gl_Position = projectionMatrix * Po4;
+}
+)";
+
+static const std::string p_frag = R"(
+#version 460
+precision highp float;
+in vec3 Po;
+in vec3 No;
+in vec3 Co;
+in vec3 NCo, TCo;
+in mat3 NoMat;
+out vec3 frag_out;
+
+const int NDIRMAX = 100; 
+layout(location=10) uniform vec3 color_diff;
+layout(location=11) uniform vec3 color_amb;
+layout(location=12) uniform vec3 color_spec;
+layout(location=13) uniform float Ns;
+layout(location=14) uniform vec3 light_pos;
+layout(location=15) uniform int NDIR;
+layout(location=16) uniform float anisodd;
+const float orient=1.0;
+const int NNmin=0;
+layout(location=18) uniform int NN;
+layout(location=19) uniform float zoom;
+layout(location=20) uniform float tV;
+layout(location=21) uniform float time;
+layout(location=22) uniform float RATIO;
+layout(location=23) uniform int QQ;
+layout(location=24) uniform float contrast;
+layout(location=25) uniform float tX;
+layout(location=26) uniform float tY;
+layout(location=27) uniform float tZ;
+
+layout(location=30) uniform int Operator;
+layout(location=31) uniform int NRec;
+layout(location=32) uniform float Proba;
+
+layout(binding=0) uniform sampler1D wave;
+layout(binding=1) uniform sampler1D waved;
+
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)); }
+
+uint seed=1;
+float random()
+{
+ seed = seed*22695477u+1u;
+ uint v = seed & 0xffffu;
+ return float(v)/float(0xffffu);
+}
+float next() { return 2.0*random()-1.0; }
+void seeding(uint x, uint y, uint z)  { seed = hash(x + hash(y + hash(z))); }
+
+//float RATIO=8.0;
+const float M_PI = 3.14159265358979;
+int NF = 1;
+int NFS[3];
+//const int NFST = 10; // 10;
+
+//vec3 grad;
+
+vec2 anisowavenoise3D(float x, float y, float z, int nd)
+{
+	const int strat=2;
+	NF = NDIR/strat/nd;  // very simple stratified sampling
+
+	vec2 sum = vec2(0.0); // result is complex number
+
+	float analpha, analphawidth, anbeta;
+	int i, j, k;
+	int dir=0;
+	for (j = 0; j < nd*NF; j++) //strat alpha
+	{
+		for (i = 0; i < strat; i++) // strat beta
+		{
+			seeding(uint(dir) * 5u, 2u, 3u);
+			float tspeed = tV*sign(next())*time;
+
+			anbeta = acos(0.25+anisodd*0.5*(float(i)+(0.5*next()+0.5))/float(strat)); 
+			float alpha1 = (j<NF ? M_PI/4.0: 3.0*M_PI/4.0) +anisodd*M_PI/8.0 * float(j) / float(NF+1);
+			float alpha2 = (j<NF ? M_PI/4.0: 3.0*M_PI/4.0) +anisodd*M_PI/8.0 *(float(j) + 1.0) / float(NF+1);
+			analpha = (alpha1 + alpha2) / 2.0;
+			analphawidth = alpha2 - alpha1;
+
+			float aa =  M_PI / 4.0 + analpha + next() * analphawidth * 0.5 ;
+			float beta = anbeta + M_PI / 4.0; 
+
+			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z;
+			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
+			float oid = id - float(iid);
+
+			seeding(uint(7 * dir), uint(4 * iid), 4u);
+			float pl = 0.5 + 0.2 * next();
+			if (oid < pl - 0.3) oid = 0.0;
+			else if (oid > pl + 0.3) oid = 1.0;
+			else oid = (oid - pl + 0.3) / 0.6;
+
+			seeding(uint(4 * dir), uint(4 * iid), 0);
+			float alpha = (analpha + next() * analphawidth);
+			float bb = acos(0.5+0.1*(float(i)+(0.5*next()+0.5))/float(strat));
+
+			float dd = (1.0 / RATIO * (sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z) + 2.0*next() -tspeed);
+			if (dir>=NNmin && dir<NN && dir<NDIR) sum += (1.0 - oid) * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+
+			seeding(uint(4 * dir), uint(4 * (iid + 1)), 0);
+			alpha = (analpha + next() * analphawidth);
+			bb = acos(0.5+0.1*(float(i)+(0.5*next()+0.5))/float(strat));
+
+			dd = (1.0 / RATIO * (sin(bb) * cos(alpha) * x + sin(bb) * sin(alpha) * y + cos(bb) * z) + 2.0 * next() -tspeed);
+			if (dir>=NNmin && dir<NN && dir<NDIR) sum += oid * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+
+			dir += 1;
+		}
+	}
+	return sum /  vec2(2.0+0.2*float(NN-NNmin));
+}
+
+vec2 isowavenoise3D(float x, float y, float z)
+{
+	vec2 sum = vec2(0.0); // result is complex number
+	float analpha, analphawidth, anbeta, anbetawidth;
+	float poids = 1.0; 
+	int i, j;
+	const int strat=4;
+	NF = NDIR/strat;  // very simple stratified sampling
+	int dir=0;
+	for (j = 0; j <= NF; j++) //strat alpha
+	{
+		for (i = 0; i < strat; i++) // strat beta
+		{
+			// strat angular sector
+			seeding(uint(dir) * 5u, 2u, 3u);
+			float tspeed = tV*sign(next())*time;
+			anbeta = acos((float(i)+(0.5*next()+0.5))/float(strat)); 
+			float alpha1 = 2.0 * M_PI * float(j) / float(NF+1);
+			float alpha2 = 2.0 * M_PI * (float(j) + 1.0) / float(NF+1);
+			analpha = (alpha1 + alpha2) / 2.0;
+			analphawidth = alpha2 - alpha1;
+
+			// slice
+			float aa =  M_PI / 4.0*orient + analpha + next() * analphawidth * 0.5 ;
+			float beta = anbeta + M_PI / 4.0*orient; 
+			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z;
+			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
+			float oid = id - float(iid);
+			seeding(uint(7 * dir), uint(4 * iid), 4u);
+			float pl = 0.5 + 0.2 * next();
+			if (oid < pl - 0.3) oid = 0.0;
+			else if (oid > pl + 0.3) oid = 1.0;
+			else oid = (oid - pl + 0.3) / 0.6;
+
+			// wave left
+			seeding(uint(4 * dir), uint(4 * iid), 0);
+			float alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
+			float bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
+			float dd = (1.0 / RATIO * (sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z) + 2.0 * next()-tspeed);
+			if (dir>=NNmin && dir<NN && dir<NDIR) {
+				sum += poids*(1.0 - oid) * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+			}
+			// wave right
+			seeding(uint(4 * dir), uint(4 * (iid + 1)), 0);
+			alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
+			bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
+			dd = (1.0 / RATIO * (sin(bb) * cos(alpha) * x + sin(bb) * sin(alpha) * y + cos(bb) * z) + 2.0 * next() -tspeed);
+			if (dir>=NNmin && dir<NN && dir<NDIR) {
+				sum += poids* oid * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+			}
+			dir += 1;
+		}
+	}
+    return sum/vec2(2.0+0.2*float(NN-NNmin));
+}
+
+vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
+{
+	uint resv = 0;
+	float rvalue = 2.0;
+
+	float analpha, analphawidth, anbeta, anbetawidth;
+	int i, j;
+	const int strat=2;
+	NF = NDIR/strat;  // very simple stratified sampling
+	int dir=0;
+	for (j = 0; j <= NF; j++) //strat alpha
+	{
+		for (i = 0; i < strat; i++) // strat beta
+		{
+			seeding(uint(dir) * 5u, 2u, 3u+rec);
+			float tspeed = tV*sign(next())*time;
+			anbeta = acos((float(i)+(0.5*next()+0.5))/float(strat)); 
+			float alpha1 = M_PI * float(j) / float(NF+1);
+			float alpha2 = M_PI * (float(j) + 1.0) / float(NF+1);
+			analpha = (alpha1 + alpha2) / 2.0;
+			analphawidth = alpha2 - alpha1;
+
+			float aa =  M_PI / 4.0*orient + analpha + next() * analphawidth * 0.5 ;
+			float beta = anbeta + M_PI / 4.0*orient; 
+
+			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z  + 5.0 + tspeed;
+			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
+			float oid = id - float(iid);
+
+			seeding(uint(7 * dir), uint(4 * iid), 4u);
+			float pl = 0.5 + 0.3 * next();
+
+			if (oid <= pl)
+			{
+				float dist1 = pl - oid;
+				rvalue = min(dist1,rvalue);
+				seeding(uint(7 * dir), uint(4 * (iid - 1)), 4u);
+				float pl2 = 0.5 + 0.3 * next();
+				float dist2 = oid + 1.0 - pl2;
+				rvalue = min(dist2,rvalue);
+			}
+			else
+			{
+				float dist1 = oid - pl;
+				rvalue = min(dist1,rvalue);
+				seeding(uint(7 * dir), uint(4 * (iid + 1)), 4u);
+				float pl2 = 0.5 + 0.3 * next();
+				float dist2 = 1.0 - oid + pl2;
+				rvalue = min(dist2,rvalue);
+			}
+			// cell index
+			int iidabs = abs(iid);
+			if ((oid <= pl && iidabs % 2 == 0) || (oid > pl && iidabs % 2 == 1)) resv += 1;
+			resv = resv * 2u;
+
+			if (oid <= pl) seeding(uint(4 * dir), uint(4 * iid), 0);
+			else seeding(uint(4 * dir), uint(4 * (iid+1)), 0);
+			float alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
+			float bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
+
+			float dd = sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z + 5.0 + tspeed;
+			int p = (dd>0.0 ? int(dd):int(dd)-1); //FASTFLOOR(dd);
+			dd = dd - float(p);
+			seeding(uint(7 * dir), uint(4 * p), 4u);
+			pl = 0.5 + 0.3 * next();
+			if (dd <= pl)
+			{
+				float dist1 = pl - dd;
+				rvalue = min(dist1,rvalue);
+				seeding(uint(7 * dir), uint(4 * (p - 1)), 4u);
+				float pl2 = 0.5 + 0.3 * next();
+				float dist2 = dd + 1.0 - pl2;
+				rvalue = min(dist2,rvalue);
+			}
+			else
+			{
+				float dist1 = dd - pl;
+				rvalue = min(dist1,rvalue);
+				seeding(uint(7 * dir), uint(4 * (p + 1)), 4u);
+				float pl2 = 0.5 + 0.3 * next();
+				float dist2 = 1.0 - dd + pl2;
+				rvalue = min(dist2,rvalue);
+			}
+			// cell index
+			iidabs = abs(p);
+			if ((dd <= pl && iidabs % 2 == 0) || (dd > pl && iidabs % 2 == 1)) resv += 1;
+			resv = resv * 2u;
+
+			dir += 1;
+		}
+	}
+	uint cellident = (resv * 1453u) % 255u;
+	return vec2(float(cellident)/255.0*2.0-1.0,rvalue*20.0-1.0);
+}
+
+vec2 cellwavenoise3D(float x, float y, float z)
+{
+int rr=0;
+vec2 res = isowavenoise3Drec(x,y,z,0);
+bool cont=true;
+for (rr=1; rr<NRec && cont; rr++)
+	{
+	uint cellident = uint(255.0*(res.x+1.0)*0.5);
+	seeding(cellident, uint(rr), 3);
+	if (0.5*(next()+1.0)<Proba)
+		{
+			vec2 res2 = isowavenoise3Drec(x,y,z,uint(rr));
+			res = vec2(res2.x, min(res.y,res2.y));
+		}
+	else cont=false;
+	}
+return res;
+}
+
+void main()
+{
+	vec3 Nco = normalize(NCo);
+	vec3 Nnn = NCo;
+	if (gl_FrontFacing==false) Nnn = -Nnn;
+	vec3 L = normalize(light_pos-Po);
+	vec3 col;
+
+	vec3 Npp = normalize(TCo);
+	vec3 Ncc = cross(Nnn,Npp);
+	vec2 waven=vec2(0.0);
+    float val = 0.0;
+	vec3 Xpos = vec3(zoom*Co.x+tX, zoom*Co.y+tY, zoom*Co.z+tZ);
+	if (Operator==0) waven = isowavenoise3D(Xpos.x, Xpos.y, Xpos.z);
+	else if (Operator==1) waven = anisowavenoise3D(Xpos.x, Xpos.y, Xpos.z, 1);
+	else if (Operator==2) waven = anisowavenoise3D(Xpos.x, Xpos.y, Xpos.z, 2);
+	else waven = cellwavenoise3D(0.1*Xpos.x, 0.1*Xpos.y, 0.1*Xpos.z);
+	if (Operator<=2) { 
+		if (QQ==0) val = clamp((contrast*waven.x+0.5), 0.0, 1.0);
+		else if (QQ==1) val = clamp((contrast*waven.y+0.5), 0.0, 1.0);
+		else if (QQ==2) val = clamp(length(waven)*2.0*contrast, 0.0, 1.0);
+		else val = atan(waven.y, waven.x)/M_PI+0.5; //smoothstep(-1.0, 1.0, cos(atan(waven.y, waven.x))); 
+		}
+	else {
+		if (Operator==3) val = clamp((0.5*waven.x+0.5), 0.0, 1.0);
+		else if (Operator==4) val = 0.8*pow(clamp((0.5*waven.y+0.5), 0.0, 1.0),contrast)+0.2;
+		else if (Operator==5) val = step(0.05, 0.5*waven.y+0.5);
+		else val = 1.0-pow(clamp((0.5*waven.y+0.5), 0.0, 1.0),contrast);
+	}
+
+	vec3 N = normalize(NoMat*normalize(Nnn));
+	float lamb = abs(dot(N,L));
+	vec3 E = normalize(-Po);
+	vec3 R = reflect(-L, N);
+	float spec = Ns==0.0 ? 0.0 : pow( max(dot(R,E), 0.0), Ns);
+
+	frag_out = min(color_amb*val+color_diff*lamb*val+color_spec*spec,vec3(1));
+}
+)";
+
+//////////////////////////////////////////////////////////////////////////////////////
+//  MAIN  VIEWER
+//////////////////////////////////////////////////////////////////////////////////////
+
+// precision of the pre-computed wave (sampling rate)
+const int NARRAY = 512;
+const int MAX_FREQ = NARRAY / 2; // half of half because of FFT symetry and Nyquist
+const int NDIR = 20;			 // 40+50;
+
+int FREQ_LOW = 1, sFREQ_LOW = 1;
+int FREQ_HIGH = 32, sFREQ_HIGH = 32;
+float Ffreq_low = 1.0 / 64.0, Ffreq_high = 32.0 / 64.0;
+
+// Creation du VIEWER
+class Viewer : public GLViewer
+{
+	ShaderProgram::UP prg_p;
+	std::vector<MeshRenderer::UP> renderer_p;
+	int nbMeshParts;
+
+	Texture1D::SP tex, texd;
+
+	Wn::WaveNoise* waveNoise;
+
+public:
+	Viewer();
+	void init_ogl() override;
+	void draw_ogl() override;
+	void interface_ogl() override;
+};
+
+/******************************************************************************
+ * Main entry program
+ *
+ * @param pArgc Number of arguments
+ * @param pArgv List of arguments
+ *
+ * @return flag telling whether or not it succeeds
+ ******************************************************************************/
+int main( int, char** )
+{
+	Viewer v;
+
+	GLFWwindow* window = v.window();
+	glfwSetWindowTitle( window, "Multi-Dimensional Procedural Wave Noise" );
+	v.set_size(1800, 1000);
+
+	return v.launch3d();
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
+{
+	waveNoise = new Wn::WaveNoise();
+	waveNoise->initialize();
+
+	waveNoise->tX = 0.0;
+	waveNoise->tY = 0.0;
+	waveNoise->tZ = 0.0;
+	waveNoise->tV = 0.0;
+	waveNoise->Ndir = 40;
+	waveNoise->Nc = 40;
+	waveNoise->Na = 0;
+	waveNoise->Orient = 1.0f;
+	waveNoise->Period = 0.0;
+	waveNoise->Zoom = 0.2f;
+	waveNoise->Time = 0.0f;
+	waveNoise->item_current = 0; // Gaussian
+	waveNoise->Oper = 0;		  // Isowave
+	waveNoise->old_item = 0;
+	waveNoise->Ratio = 64.0f;
+	waveNoise->iRatio = 6;
+	waveNoise->complex_current = 0;
+	waveNoise->Power = 25.0;
+	waveNoise->old_power = 1.0;
+	waveNoise->contrast = 0.5;
+	waveNoise->Proba = 0.5;
+	waveNoise->NRec = 3;
+	waveNoise->Anisodd = 0.5;
+
+	// iso3dangles();
+	waveNoise->createIsotropicProceduralEnergyDistri();
+	waveNoise->precomputePlanarWave( 4.0 );
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::init_ogl()
+{
+	prg_p = ShaderProgram::create({ {GL_VERTEX_SHADER, p_vert}, {GL_FRAGMENT_SHADER, p_frag} }, "prog");
+
+	// Load OBJ file mesh
+	auto mesh = Mesh::load(DATA_PATH + "/models/manual_cutaway_cube.obj");
+
+	nbMeshParts = mesh.size();
+	// set the renderer and the materials for all the meshes parts
+	for (int i = 0; i < nbMeshParts; ++i)
+	{
+		renderer_p.push_back(mesh[i]->renderer(1, 2, 3, 4, -1));
+	}
+	set_scene_center(mesh[0]->BB()->center());
+	set_scene_radius(3.0 * mesh[0]->BB()->radius());
+	// set_scene_radius(50.f);
+
+	tex = Texture1D::create();
+	// tex->update(0, N, wprofile);
+	tex->alloc(NARRAY, GL_RGB8, waveNoise->fs_cr.data());
+
+	texd = Texture1D::create();
+	// tex->update(0, N, wprofile);
+	texd->alloc(NARRAY, GL_RGB8, waveNoise->fsd_cr.data());
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::draw_ogl()
+{
+	GLMat4 sc = Transfo::scale(2.5);
+	GLMat4 rotx = Transfo::rotateX(-60.0);
+	GLMat4 rotz = Transfo::rotateZ(25.0);
+	const GLMat4& proj = this->get_projection_matrix();
+	const GLMat4& mv = this->get_view_matrix() * sc * rotx * rotz;
+
+	glEnable(GL_DEPTH_TEST);
+	glClearColor(1.0, 1.0, 1.0, 0.0);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	waveNoise->FREQ_LOW = (int)(waveNoise->Ffreq_low * 64.0);
+	waveNoise->FREQ_HIGH = (int)(waveNoise->Ffreq_high * 64.0);
+	prg_p->bind();
+	tex->bind(0);
+	texd->bind(1);
+	if (waveNoise->FREQ_LOW != waveNoise->sFREQ_LOW || waveNoise->FREQ_HIGH != waveNoise->sFREQ_HIGH || waveNoise->item_current != waveNoise->old_item ||
+		(waveNoise->item_current >= 4 && waveNoise->old_power != waveNoise->Power))
+	{
+		waveNoise->sFREQ_LOW = waveNoise->FREQ_LOW;
+		waveNoise->sFREQ_HIGH = waveNoise->FREQ_HIGH;
+		waveNoise->old_item = waveNoise->item_current;
+		waveNoise->old_power = waveNoise->Power;
+		if (waveNoise->item_current >= 4 && waveNoise->item_current <= 9)
+		{
+			int pow_2 = 1, N = 1;
+			while (N < waveNoise->NARRAY)
+			{
+				pow_2++;
+				N *= 2;
+			}
+			pow_2--;
+			printf("NARRAY=%d, N=%d, pow2=%d\n", waveNoise->NARRAY, N, pow_2);
+			double* A = waveNoise->MakeSpatialWaveProfile( pow_2 );
+			waveNoise->precomputePlanarWaveFromFFT1D( A, N, pow_2 );
+			delete A;
+		}
+		else
+		{
+			waveNoise->createIsotropicProceduralEnergyDistri();
+			waveNoise->precomputePlanarWave( 4.0 );
+		}
+		tex->alloc(waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data());
+		texd->alloc(waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data());
+	}
+	set_uniform_value(1, proj);
+	set_uniform_value(2, mv);
+	set_uniform_value(3, Transfo::inverse_transpose(mv));
+
+	set_uniform_value(14, GLVec3(0, 2.0, 3.0));
+
+	set_uniform_value(25, waveNoise->tX+5.0);
+	set_uniform_value(26, waveNoise->tY+5.0);
+	set_uniform_value(27, waveNoise->tZ+5.0);
+	set_uniform_value(15, waveNoise->Ndir);
+	set_uniform_value(16, waveNoise->Anisodd);
+	waveNoise->Period = 1.0 - waveNoise->Orient;
+	// set_uniform_value(17, Period);
+	set_uniform_value(18, waveNoise->Ndir);
+	// set_uniform_value(20, Na);
+	set_uniform_value(20, waveNoise->tV);
+	set_uniform_value(21, waveNoise->Time);
+	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio);
+	set_uniform_value(22, waveNoise->Ratio);
+	set_uniform_value(19, waveNoise->Zoom * waveNoise->Ratio);
+	set_uniform_value(23, waveNoise->complex_current);
+	set_uniform_value(24, waveNoise->contrast);
+	set_uniform_value(30, waveNoise->Oper);
+	set_uniform_value(31, waveNoise->NRec);
+	set_uniform_value(32, waveNoise->Proba);
+
+	for (int i = 0; i < renderer_p.size(); i++)
+	{
+		auto mat = renderer_p[i]->material();
+
+		set_uniform_value(10, mat->Kd);
+		set_uniform_value(11, mat->Ka);
+		set_uniform_value(12, mat->Ks);
+		set_uniform_value(13, mat->Ns);
+		set_uniform_value("light_pos", GLVec3(0, 2, 2.5));
+		renderer_p[i]->draw(GL_TRIANGLES);
+	}
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::interface_ogl()
+{
+	ImGui::Begin("Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
+	ImGui::SetWindowSize(ImVec2(600, 500));
+	ImGui::SetWindowPos(ImVec2(10, 10));
+	//ImGui::Text("FPS: %2.2lf", fps_);
+	ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
+	ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
+	ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
+	ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
+	ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
+	ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
+	ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
+
+	// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
+	ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
+	ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
+	ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0/64.0, 1.0);
+	ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
+	const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",	   
+		"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
+	ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
+	const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
+	ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
+	const char* itemsop[] = { "Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular", "Hyperplan", "Reversed Cellular" };
+	ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
+	ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
+	ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
+	ImGui::SliderFloat("STIT Probability", &waveNoise->Proba, 0.0, 1.0);
+	ImGui::SliderInt("STIT Recursions", &waveNoise->NRec, 1, 5);
+
+	// ImGui::SetWindowSize({ 0, 0 });
+	ImGui::End();
+}
+
