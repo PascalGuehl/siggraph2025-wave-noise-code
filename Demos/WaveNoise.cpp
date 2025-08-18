@@ -15,9 +15,13 @@
 
 #include "WaveNoise.h"
 
+/******************************************************************************
+ ******************************* INCLUDE SECTION ******************************
+ ******************************************************************************/
+
+ // System
 #include <climits>
 #include <cmath>
-
 #include <ctime>
 
 // STL
@@ -30,6 +34,7 @@
 #include <fstream>
 #include <chrono>
 
+// Project
 #include "hvPair.h"
 
 /******************************************************************************
@@ -106,52 +111,68 @@ void WaveNoise::initialize()
 }
 
 /******************************************************************************
- * ...
+ * Create a (procedural) energy distribution for amplitudes for the isotropic case.
+ * Hence, it will use only one amplitudes distribution for all sampled directions.
  ******************************************************************************/
 void WaveNoise::createIsotropicProceduralEnergyDistri()
 {
+	printf( "create isotropic energy distri\n" );
+
 	const int FF = 4;
-	printf("create isotropic energy distri\n");
-	int ii = 0, jj = 0;
-	for (ii = 0; ii < MAX_FREQ; ii++)
+	
+	// Iterate over the frequency domain
+	for ( int ii = 0; ii < MAX_FREQ; ii++ )
 	{
 		double ampli = 0.0;
-		if (ii >= FREQ_LOW && ii <= FREQ_HIGH)
+		// Check current allowed frequency bandwith
+		if ( ii >= FREQ_LOW && ii <= FREQ_HIGH )
 		{
 			double freq = (double)ii / (double)(NARRAY / 2);
-			switch (item_current)
+			switch ( item_current )
 			{
-			case 0:
-				// ampli decrease as gaussian -> gaussian noise 
-				freq = (double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW);
-				ampli = 1.0 / 16.0 * exp(-freq * freq * 3.0 * 3.0);
-				break;
-			case 1:
-				// ampli constant -> white noise  
-				ampli = 1.0 / 8.0;
-				break;
-			case 2:
-				// ampli increases -> blue noise  
-				ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0;
-				break;
-			case 3:
-				// ampli decrease -> brown noise
-				ampli = 1.0 / 16.0 * (1.0 - pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 0.045));
-				break;
-			case 10:
-				// ampli constant on two-steps -> two-level white noise
-				if (ii < 64 / FF)
-					ampli = 0.0;
-				else if (ii >= 64 / FF && ii < 80 / FF)
-					ampli = 0.8 / 16.0;
-				else if (ii >= 80 / FF && ii < 256 / FF)
-					ampli = 0.275 / 16.0;
-				else
-					ampli = 0.0;
-				break;
-			}
+				case 0:
+					// ampli decrease as gaussian -> gaussian noise 
+					freq = (double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW);
+					ampli = 1.0 / 16.0 * exp(-freq * freq * 3.0 * 3.0);
+					break;
+
+				case 1:
+					// ampli constant -> white noise  
+					ampli = 1.0 / 8.0;
+					break;
+
+				case 2:
+					// ampli increases -> blue noise  
+					ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0;
+					break;
+
+				case 3:
+					// ampli decrease -> brown noise
+					ampli = 1.0 / 16.0 * (1.0 - pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 0.045));
+					break;
+
+				case 10:
+					// ampli constant on two-steps -> two-level white noise
+					if (ii < 64 / FF)
+						ampli = 0.0;
+					else if (ii >= 64 / FF && ii < 80 / FF)
+						ampli = 0.8 / 16.0;
+					else if (ii >= 80 / FF && ii < 256 / FF)
+						ampli = 0.275 / 16.0;
+					else
+						ampli = 0.0;
+					break;
+
+				default:
+					// ampli decrease as gaussian -> gaussian noise 
+					freq = (double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW);
+					ampli = 1.0 / 16.0 * exp(-freq * freq * 3.0 * 3.0);
+					break;
+				}
 		}
-		spectralEnergyDistribution[0][ii] = ampli;
+
+		// Fill only one amplitudes distribution for all sampled directions (slot direction #0)
+		spectralEnergyDistribution[ 0 ][ ii ] = ampli;
 	}
 }
 
