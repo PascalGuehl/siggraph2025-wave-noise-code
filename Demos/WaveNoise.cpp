@@ -177,60 +177,69 @@ void WaveNoise::createIsotropicProceduralEnergyDistri()
 }
 
 /******************************************************************************
- * ...
+ * Precompute 1D profile's planar wave
  ******************************************************************************/
-void WaveNoise::precomputePlanarWave(float scale)
+void WaveNoise::precomputePlanarWave( float scale )
 {
-	int ii, k;
-
 	int Nfreq = MAX_FREQ;
 	int finit = 0;
 	vmax = 0.0;
-	//double rphases[MAX_FREQ];
+	
+	// Generate random phases in [-1;1]
 	std::vector< double > rphases( MAX_FREQ, 0.0 );
-	srand(10);
-	for (k = 0; k < MAX_FREQ; k++)
-		rphases[k] = 2.0 * (double)rand() / (double)RAND_MAX - 1.0;
+	srand( 10 );
+	for ( int k = 0; k < MAX_FREQ; k++ )
+		rphases[ k ] = 2.0 * (double)rand() / (double)RAND_MAX - 1.0;
 
-	for (ii = 0; ii < NARRAY; ii++)
+	// Generate (scaled) planar wave, i.e. 1D profile.
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fs[ii][0] = 0.0;
-		fs[ii][1] = 0.0;
-		fs[ii][2] = 0.0;
-		for (k = finit; k < finit + Nfreq; k++)
+		fs[ ii ][ 0 ] = 0.0;
+		fs[ ii ][ 1 ] = 0.0;
+		fs[ ii ][ 2 ] = 0.0;
+		for ( int k = finit; k < finit + Nfreq; k++ )
 		{
 			// random phase
-			double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
-			double freq = 1.0 / (float)NARRAY;
+			const double phase = 2.0 * M_PI * rphases[ k ]; // inoise(2 * k, 0, 0);
+
+			const double freq = 1.0 / (float)NARRAY;
+
 			// get user defined amplitude
-			double ampli = spectralEnergyDistribution[0][k];
+			const double ampli = spectralEnergyDistribution[ 0 ][ k ];
+
 			// compute sum real and imaginary parts
-			double vcos = ampli * cos(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-			fs[ii][0] += vcos;
-			double vsin = ampli * sin(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-			fs[ii][1] += vsin;
+			const double vcos = ampli * cos( scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0 );
+			fs[ ii ][ 0 ] += vcos;
+			const double vsin = ampli * sin( scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0 );
+			fs[ ii ][ 1 ] += vsin;
 		}
-		if (abs(fs[ii][0]) > vmax)
-			vmax = abs(fs[ii][0]);
-		if (abs(fs[ii][1]) > vmax)
-			vmax = abs(fs[ii][1]);
+
+		// Update max wave value
+		if ( abs( fs[ ii ][ 0 ] ) > vmax )
+			vmax = abs( fs[ ii ][ 0 ] );
+		if ( abs( fs[ ii ][ 1]) > vmax )
+			vmax = abs( fs[ ii ][ 1 ] );
 	}
 
 	// Normalize
-	for (ii = 0; ii < NARRAY; ii++)
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fs[ii][0] /= vmax;
-		fs_cr[3 * ii + 0] = (unsigned char)(fs[ii][0] * 127.0 + 128.0);
-		fs[ii][1] /= vmax;
-		fs_cr[3 * ii + 1] = (unsigned char)(fs[ii][1] * 127.0 + 128.0);
-		fs_cr[3 * ii + 2] = 0;
+		// Value in [-1;1]
+		fs[ ii ][ 0 ] /= vmax;
+		fs[ ii ][ 1 ] /= vmax;
+
+		// Value in [0;255] for unsigned char RGB texture (8 bits)
+		fs_cr[ 3 * ii + 0 ] = (unsigned char)(fs[ii][0] * 127.0 + 128.0);
+		fs_cr[ 3 * ii + 1 ] = (unsigned char)(fs[ii][1] * 127.0 + 128.0);
+		fs_cr[ 3 * ii + 2 ] = 0;
 	}
-	// Gradient
-	for (ii = 0; ii < NARRAY; ii++)
+
+	// Pre-compute gradient (finite difference)
+	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
-		fsd_cr[3 * ii + 0] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][0] - fs[(ii + 1) % NARRAY][0]) * 64.0 + 128.0);
-		fsd_cr[3 * ii + 1] = (unsigned char)((fs[(ii + NARRAY - 1) % NARRAY][1] - fs[(ii + 1) % NARRAY][1]) * 64.0 + 128.0);
-		fsd_cr[3 * ii + 2] = 0;
+		fsd_cr[ 3 * ii + 0 ] = (unsigned char)( (fs[(ii + NARRAY - 1) % NARRAY][0] - fs[(ii + 1) % NARRAY][0]) * 64.0 + 128.0 );
+		fsd_cr[ 3 * ii + 1 ] = (unsigned char)( (fs[(ii + NARRAY - 1) % NARRAY][1] - fs[(ii + 1) % NARRAY][1]) * 64.0 + 128.0 );
+		fsd_cr[ 3 * ii + 2 ] = 0;
 	}
 }
 
