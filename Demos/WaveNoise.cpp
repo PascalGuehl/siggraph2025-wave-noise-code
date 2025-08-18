@@ -191,7 +191,7 @@ void WaveNoise::precomputePlanarWave( float scale )
 	for ( int k = 0; k < MAX_FREQ; k++ )
 		rphases[ k ] = 2.0 * (double)rand() / (double)RAND_MAX - 1.0;
 
-	// Generate (scaled) planar wave, i.e. 1D profile.
+	// Generate (scaled) planar wave, i.e. 1D profile
 	for ( int ii = 0; ii < NARRAY; ii++ )
 	{
 		fs[ ii ][ 0 ] = 0.0;
@@ -244,23 +244,26 @@ void WaveNoise::precomputePlanarWave( float scale )
 }
 
 /******************************************************************************
- * ...
+ * Wave types: 
+ * 0:"noise-gaussian", 1:"noise-white", 2:"noise-blue", 3:"noise-brown",
+ * 4:"nongauss-crystal1", 5:"nongauss-web", 6:"nongauss-marble", 7:"nongauss-crystal2", 8:"nongauss-scratches", 9:"nongauss-smooth cells", 10:"noise-two ampli levels"
  ******************************************************************************/
-double* WaveNoise::MakeSpatialWaveProfile(int pow_2)
+double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 {
-	//double rphases[MAX_FREQ];
+	// Generate random phases in [-1;1]
 	std::vector< double > rphases( MAX_FREQ, 0.0 );
-	srand(10);
-	for (int k = 0; k < MAX_FREQ; k++)
+	srand( 10 );
+	for ( int k = 0; k < MAX_FREQ; k++ )
 		rphases[k] = 2.0 * (double)rand() / (double)RAND_MAX - 1.0;
 
+	// Generate planar wave, i.e. 1D profile
 	int Nfreq = MAX_FREQ;
 	int finit = 0;
 	int N = 1 << pow_2;
 	int i;
 	const float scale = 1.0;
 	double* A = (double*)malloc(sizeof(double) * N);
-	for (i = 0; i < N; i++)
+	for ( i = 0; i < N; i++ )
 	{
 		// DIFFERENT WAVE PROFILES (None Gaussian)
 		///////////////////////
@@ -275,140 +278,147 @@ double* WaveNoise::MakeSpatialWaveProfile(int pow_2)
 		x *= 2.0;
 		double step = 1.0, aa = 4.0;
 		float sumr = 0.0, sumi = 0.0;
-		switch (item_current)
+
+		switch ( item_current )
 		{
-		// periodic peaks
-		case 4:
-			if (x <= 1.0)
-				A[i] = 0.8 * (2.0 * pow(x, Power) - 1.0); // Power=50.0
-			else
-				A[i] = 0.8 * (2.0 * pow(2.0 - x, Power) - 1.0);
-			if (y % 2 == 0)
-				A[i] = -A[i];
-			break;
-		// other peaks
-		case 5:
-			if (ii < 20)
-				A[i] = (ii < 10 ? (double)ii / 10.0 : 1.0 - (double)(ii - 10) / 10.0);
-			else if (ii < 60)
-				A[i] = (ii < 40 ? (double)(ii - 20) / 20.0 : 1.0 - (double)(ii - 40) / 20.0);
-			else if (ii < 120)
-				A[i] = (ii < 90 ? -(double)(ii - 60) / 30.0 : -1.0 + (double)(ii - 90) / 30.0);
-			else if (ii < 170)
-				A[i] = (ii < 145 ? (double)(ii - 120) / 25.0 : 1.0 - (double)(ii - 145) / 25.0);
-			else if (ii < 250)
-				A[i] = (ii < 210 ? (double)(ii - 170) / 40.0 : 1.0 - (double)(ii - 210) / 40.0);
-			else if (ii < 300)
-				A[i] = (ii < 275 ? -(double)(ii - 250) / 25.0 : -1.0 + (double)(ii - 275) / 25.0);
-			else if (ii < 400)
-				A[i] = (ii < 350 ? (double)(ii - 300) / 50.0 : 1.0 - (double)(ii - 350) / 50.0);
-			else if (ii < 512)
-				A[i] = (ii < 456 ? (double)(ii - 400) / 56.0 : 1.0 - (double)(ii - 456) / 56.0);
-			else
-				A[i] = (ii < 506 ? (double)(ii - 500) / 6.0 : 1.0 - (double)(ii - 506) / 6.0);
-			if (A[i] < 0.0)
-				A[i] = -2.0 * pow(-A[i], Power); // Power=25.0
-			else
-				A[i] = 2.0 * pow(A[i], Power);
-			break;
-		// triangular functions
-		case 6:
-			A[i] = 0.0;
-			for (int k = 0; k < 5; k++)
-			{
-				double val = 0.0;
-				ff = (double)i / (double)N * step;
-				ff = ff - (int)ff;
-				ii = (int)(ff * (double)N);
+			// periodic peaks - wave type: "nongauss-crystal1"
+			case 4:
+				if (x <= 1.0)
+					A[i] = 0.8 * (2.0 * pow(x, Power) - 1.0); // Power=50.0
+				else
+					A[i] = 0.8 * (2.0 * pow(2.0 - x, Power) - 1.0);
+				if (y % 2 == 0)
+					A[i] = -A[i];
+				break;
+
+			// other peaks - wave type: "nongauss-web"
+			case 5:
 				if (ii < 20)
-					val = (ii < 10 ? (double)ii / 10.0 : 1.0 - (double)(ii - 10) / 10.0);
+					A[i] = (ii < 10 ? (double)ii / 10.0 : 1.0 - (double)(ii - 10) / 10.0);
 				else if (ii < 60)
-					val = (ii < 40 ? (double)(ii - 20) / 20.0 : 1.0 - (double)(ii - 40) / 20.0);
+					A[i] = (ii < 40 ? (double)(ii - 20) / 20.0 : 1.0 - (double)(ii - 40) / 20.0);
 				else if (ii < 120)
-					val = (ii < 90 ? -(double)(ii - 60) / 30.0 : -1.0 + (double)(ii - 90) / 30.0);
+					A[i] = (ii < 90 ? -(double)(ii - 60) / 30.0 : -1.0 + (double)(ii - 90) / 30.0);
 				else if (ii < 170)
-					val = (ii < 145 ? (double)(ii - 120) / 25.0 : 1.0 - (double)(ii - 145) / 25.0);
+					A[i] = (ii < 145 ? (double)(ii - 120) / 25.0 : 1.0 - (double)(ii - 145) / 25.0);
 				else if (ii < 250)
-					val = (ii < 210 ? (double)(ii - 170) / 40.0 : 1.0 - (double)(ii - 210) / 40.0);
+					A[i] = (ii < 210 ? (double)(ii - 170) / 40.0 : 1.0 - (double)(ii - 210) / 40.0);
 				else if (ii < 300)
-					val = (ii < 275 ? -(double)(ii - 250) / 25.0 : -1.0 + (double)(ii - 275) / 25.0);
+					A[i] = (ii < 275 ? -(double)(ii - 250) / 25.0 : -1.0 + (double)(ii - 275) / 25.0);
 				else if (ii < 400)
-					val = (ii < 350 ? (double)(ii - 300) / 50.0 : 1.0 - (double)(ii - 350) / 50.0);
+					A[i] = (ii < 350 ? (double)(ii - 300) / 50.0 : 1.0 - (double)(ii - 350) / 50.0);
 				else if (ii < 512)
-					val = (ii < 456 ? (double)(ii - 400) / 56.0 : 1.0 - (double)(ii - 456) / 56.0);
+					A[i] = (ii < 456 ? (double)(ii - 400) / 56.0 : 1.0 - (double)(ii - 456) / 56.0);
 				else
-					val = (ii < 506 ? (double)(ii - 500) / 6.0 : 1.0 - (double)(ii - 506) / 6.0);
-				if (val < 0.0)
-					val = -pow(-val, Power); // Power=8.0
+					A[i] = (ii < 506 ? (double)(ii - 500) / 6.0 : 1.0 - (double)(ii - 506) / 6.0);
+				if (A[i] < 0.0)
+					A[i] = -2.0 * pow(-A[i], Power); // Power=25.0
 				else
-					val = pow(val, Power);
-				A[i] += val * aa;
-				aa /= 1.25;
-				step *= 1.5;
-			}
-			break;
-		// multi step function
-		case 7:
-			if (ii < 60)
+					A[i] = 2.0 * pow(A[i], Power);
+				break;
+
+			// triangular functions - wave type: "nongauss-marble"
+			case 6:
 				A[i] = 0.0;
-			else if (ii < 120)
-				A[i] = 0.2;
-			else if (ii < 170)
-				A[i] = -0.2;
-			else if (ii < 250)
+				for (int k = 0; k < 5; k++)
+				{
+					double val = 0.0;
+					ff = (double)i / (double)N * step;
+					ff = ff - (int)ff;
+					ii = (int)(ff * (double)N);
+					if (ii < 20)
+						val = (ii < 10 ? (double)ii / 10.0 : 1.0 - (double)(ii - 10) / 10.0);
+					else if (ii < 60)
+						val = (ii < 40 ? (double)(ii - 20) / 20.0 : 1.0 - (double)(ii - 40) / 20.0);
+					else if (ii < 120)
+						val = (ii < 90 ? -(double)(ii - 60) / 30.0 : -1.0 + (double)(ii - 90) / 30.0);
+					else if (ii < 170)
+						val = (ii < 145 ? (double)(ii - 120) / 25.0 : 1.0 - (double)(ii - 145) / 25.0);
+					else if (ii < 250)
+						val = (ii < 210 ? (double)(ii - 170) / 40.0 : 1.0 - (double)(ii - 210) / 40.0);
+					else if (ii < 300)
+						val = (ii < 275 ? -(double)(ii - 250) / 25.0 : -1.0 + (double)(ii - 275) / 25.0);
+					else if (ii < 400)
+						val = (ii < 350 ? (double)(ii - 300) / 50.0 : 1.0 - (double)(ii - 350) / 50.0);
+					else if (ii < 512)
+						val = (ii < 456 ? (double)(ii - 400) / 56.0 : 1.0 - (double)(ii - 456) / 56.0);
+					else
+						val = (ii < 506 ? (double)(ii - 500) / 6.0 : 1.0 - (double)(ii - 506) / 6.0);
+					if (val < 0.0)
+						val = -pow(-val, Power); // Power=8.0
+					else
+						val = pow(val, Power);
+					A[i] += val * aa;
+					aa /= 1.25;
+					step *= 1.5;
+				}
+				break;
+
+			// multi step function - wave type: "nongauss-crystal2"
+			case 7:
+				if (ii < 60)
+					A[i] = 0.0;
+				else if (ii < 120)
+					A[i] = 0.2;
+				else if (ii < 170)
+					A[i] = -0.2;
+				else if (ii < 250)
+					A[i] = 0.0;
+				else if (ii < 400)
+					A[i] = 0.2;
+				else
+					A[i] = 0.0;
+				break;
+
+			// threshold from spectrum - wave type: "nongauss-scratches"
+			case 8:
 				A[i] = 0.0;
-			else if (ii < 400)
-				A[i] = 0.2;
-			else
-				A[i] = 0.0;
-			break;
-		// threshold from spectrum
-		case 8:
-			A[i] = 0.0;
-			for (int k = finit; k < finit + Nfreq; k++)
-			{
-				double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
-				double freq = 1.0 / (float)NARRAY;
-				double ampli;
-				if (item_current == 8)
-					ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0 / (double)NARRAY;
-				double vcos = ampli * cos(2.0 * M_PI * (double)i * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-				A[i] += vcos;
-			}
-			// apply threshold
-			if (A[i] > 1.0)
-				A[i] = 1.0;
-			else if (A[i] < -1.0)
-				A[i] = -1.0;
-			if (A[i] >= 0.0)
-				A[i] = 5.0 * pow(A[i], item_current == 8 ? Power * 0.1 : Power); // Power=2.0
-			else
-				A[i] = -5.0 * pow(-A[i], item_current == 8 ? Power * 0.1 : Power);
-			break;
-		// contrast augmented spectrum
-		case 9:
-			for (int k = FREQ_LOW; k < FREQ_HIGH; k++)
-			{
-				// random phase
-				double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
-				double freq = 1.0 / (float)NARRAY;
-				// get defined amplitude
-				double ampli = 1.0 / 16.0 * (1.0 - pow((double)(k - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 0.05));
-				// compute sum real and imaginary parts
-				double vcos =
-					ampli * cos(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-				double vsin =
-					ampli * sin(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-				sumr += vcos;
-				sumi += vsin;
-			}
-			A[i] = pow(10.0 * (sumr * sumr + sumi * sumi), 0.005);
-			if (A[i] > 1.0)
-				A[i] = 1.0;
-			break;
+				for (int k = finit; k < finit + Nfreq; k++)
+				{
+					double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
+					double freq = 1.0 / (float)NARRAY;
+					double ampli;
+					if (item_current == 8)
+						ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0 / (double)NARRAY;
+					double vcos = ampli * cos(2.0 * M_PI * (double)i * freq * (double)k + phase + 2.0 * M_PI / 10.0);
+					A[i] += vcos;
+				}
+				// apply threshold
+				if (A[i] > 1.0)
+					A[i] = 1.0;
+				else if (A[i] < -1.0)
+					A[i] = -1.0;
+				if (A[i] >= 0.0)
+					A[i] = 5.0 * pow(A[i], item_current == 8 ? Power * 0.1 : Power); // Power=2.0
+				else
+					A[i] = -5.0 * pow(-A[i], item_current == 8 ? Power * 0.1 : Power);
+				break;
+
+			// contrast augmented spectrum - wave type: "nongauss-smooth cells"
+			case 9:
+				for (int k = FREQ_LOW; k < FREQ_HIGH; k++)
+				{
+					// random phase
+					double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
+					double freq = 1.0 / (float)NARRAY;
+					// get defined amplitude
+					double ampli = 1.0 / 16.0 * (1.0 - pow((double)(k - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 0.05));
+					// compute sum real and imaginary parts
+					double vcos =
+						ampli * cos(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
+					double vsin =
+						ampli * sin(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
+					sumr += vcos;
+					sumi += vsin;
+				}
+				A[i] = pow(10.0 * (sumr * sumr + sumi * sumi), 0.005);
+				if (A[i] > 1.0)
+					A[i] = 1.0;
+				break;
 		}
 	}
-	if (item_current == 9) // normalize wave
+
+	if ( item_current == 9 ) // normalize wave
 	{
 		float vmin = A[0], vmax = A[0];
 		for (i = 0; i < N; i++)
@@ -423,6 +433,7 @@ double* WaveNoise::MakeSpatialWaveProfile(int pow_2)
 			A[i] = -1.0 + 2.0 * (A[i] - vmin) / (vmax - vmin);
 		}
 	}
+
 	return A;
 }
 
