@@ -30,6 +30,7 @@
 
 // STL
 #include <iostream>
+#include <iomanip>
 
 // GLFW
 #include <GLFW/glfw3.h>
@@ -443,18 +444,28 @@ void main()
 class Viewer : public GLViewer
 {
 	ShaderProgram::UP prg_p;
+	
 	std::vector<MeshRenderer::UP> renderer_p;
 	int nbMeshParts;
 
 	Texture1D::SP tex, texd;
+	
+	// GPU timer
+	GLuint mQueryTimeElapsed;
+	GLuint64 mGPUTimeElapsed;
 
 	Wn::WaveNoise* waveNoise;
 
 public:
+
 	Viewer();
+	~Viewer();
+
 	void init_ogl() override;
 	void draw_ogl() override;
 	void interface_ogl() override;
+
+	bool display1DProfileWidget();
 };
 
 /******************************************************************************
@@ -477,9 +488,13 @@ int main( int, char** )
 }
 
 /******************************************************************************
- * ...
+ * Constructor
  ******************************************************************************/
-Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
+Viewer::Viewer()
+: nbMeshParts(0)
+, waveNoise( nullptr )
+, mQueryTimeElapsed( 0 )
+, mGPUTimeElapsed( 0 )
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
@@ -517,6 +532,15 @@ Viewer::Viewer() : nbMeshParts(0), waveNoise( nullptr )
 }
 
 /******************************************************************************
+ * Destructor
+ ******************************************************************************/
+Viewer::~Viewer()
+{
+	// Device timer
+	glDeleteQueries( 1, &mQueryTimeElapsed );
+}
+
+/******************************************************************************
  * Callback for custom initialization function
  ******************************************************************************/
 void Viewer::init_ogl()
@@ -543,6 +567,9 @@ void Viewer::init_ogl()
 	texd = Texture1D::create();
 	// tex->update(0, N, wprofile);
 	texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+
+	// Device timer
+	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
 }
 
 /******************************************************************************
@@ -620,6 +647,10 @@ void Viewer::draw_ogl()
 	set_uniform_value(31, waveNoise->NRec);
 	set_uniform_value(32, waveNoise->Proba);
 
+	// GPU timer
+	GLuint64 result = 0;
+	mGPUTimeElapsed = 0;
+
 	for (int i = 0; i < renderer_p.size(); i++)
 	{
 		auto mat = renderer_p[i]->material();
@@ -629,8 +660,20 @@ void Viewer::draw_ogl()
 		set_uniform_value(12, mat->Ks);
 		set_uniform_value(13, mat->Ns);
 		set_uniform_value("light_pos", GLVec3(0, 2, 2.5));
-		renderer_p[i]->draw(GL_TRIANGLES);
+
+		glBeginQuery( GL_TIME_ELAPSED, mQueryTimeElapsed );
+
+		renderer_p[ i ]->draw( GL_TRIANGLES );
+
+		// GPU timer
+		glEndQuery( GL_TIME_ELAPSED );
+		glGetQueryObjectui64v( mQueryTimeElapsed, GL_QUERY_RESULT, &result );
+		mGPUTimeElapsed += result;
 	}
+
+	// LOG info
+	std::cout << "\tTOTAL: ";
+	std::cout << "\t" << std::fixed << std::setw( 9 ) << std::setprecision( 3 ) << std::setfill( ' ' ) << ( mGPUTimeElapsed * 1.e-6 ) << " ms\n";
 }
 
 /******************************************************************************
@@ -669,4 +712,73 @@ void Viewer::interface_ogl()
 
 	// ImGui::SetWindowSize({ 0, 0 });
 	ImGui::End();
+
+	// Display wave noise's' 1D profile
+	display1DProfileWidget();
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+bool Viewer::display1DProfileWidget()
+{
+	bool updateRequested = false;
+
+	// Force UI on top right
+	ImGuiIO& io = ImGui::GetIO();
+	const float PAD = 10.0f; // petite marge du bord
+	ImGui::SetNextWindowPos(ImVec2( io.DisplaySize.x - PAD, PAD ), ImGuiCond_Always, ImVec2( 1.0f, 0.0f ) );
+	ImGui::SetNextWindowBgAlpha( 0.9f );
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoCollapse
+		| ImGuiWindowFlags_NoSavedSettings;
+
+	ImGui::Begin( "PLANE WAVE##hpn", nullptr, flags );
+	{
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "Amplitude (energy distribution)" );
+
+		// Display amplitude's energy distribution
+		{
+			const unsigned int MAX_FREQ = waveNoise->MAX_FREQ;
+			const unsigned int directionIndex = 0;
+			const std::vector< std::vector< double > >& spectralEnergyDistribution = waveNoise->spectralEnergyDistribution;
+			const std::vector< double >& mfs = spectralEnergyDistribution[ directionIndex ];
+			std::vector< float > samples( MAX_FREQ );
+			for ( int n = 0; n < MAX_FREQ; n++ )
+			{
+				samples[ n ] = mfs[ n ];
+			}
+			const int values_offset = 0;
+			const char* overlay_text = NULL;
+			const float scale_min = FLT_MAX;
+			const float scale_max = FLT_MAX;
+			ImVec2 graph_size = ImVec2( 256, 128 ); // hard-coded
+			int stride = sizeof( float );
+			ImGui::PlotLines( "", samples.data(), MAX_FREQ, values_offset, overlay_text, scale_min, scale_max, graph_size);
+		}
+
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "1D Profile (real part)" );
+
+		// Display pre-computed 1D wave
+		{
+			const unsigned int mNARRAY = waveNoise->NARRAY;
+			const std::vector< std::vector< double > >& mfs = waveNoise->fs;
+			std::vector< float > samples( mNARRAY );
+			for ( int n = 0; n < mNARRAY; n++ )
+			{
+				samples[ n ] = mfs[ n ][ 0 ]; // real part
+			}
+			const int values_offset = 0;
+			const char* overlay_text = NULL;
+			const float scale_min = FLT_MAX;
+			const float scale_max = FLT_MAX;
+			ImVec2 graph_size = ImVec2( 512, 128 ); // hard-coded
+			int stride = sizeof( float );
+			ImGui::PlotLines( "", samples.data(), mNARRAY, values_offset, overlay_text, scale_min, scale_max, graph_size );
+		}
+	}
+	ImGui::End();
+
+	return updateRequested;
 }

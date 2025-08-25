@@ -64,7 +64,7 @@ public:
     std::vector< unsigned char > fsd_cr;
 
     // The user defined discrete spectral energy distribution used for noise control
-    std::vector < std::vector< double > > spectralEnergyDistribution;
+    std::vector< std::vector< double > > spectralEnergyDistribution;
     
     /******************************** METHODS *********************************/
         
