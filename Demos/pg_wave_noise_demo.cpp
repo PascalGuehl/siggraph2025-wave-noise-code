@@ -466,6 +466,7 @@ public:
 	void interface_ogl() override;
 
 	bool display1DProfileWidget();
+	void displayPeformance();
 };
 
 /******************************************************************************
@@ -670,10 +671,6 @@ void Viewer::draw_ogl()
 		glGetQueryObjectui64v( mQueryTimeElapsed, GL_QUERY_RESULT, &result );
 		mGPUTimeElapsed += result;
 	}
-
-	// LOG info
-	std::cout << "\tTOTAL: ";
-	std::cout << "\t" << std::fixed << std::setw( 9 ) << std::setprecision( 3 ) << std::setfill( ' ' ) << ( mGPUTimeElapsed * 1.e-6 ) << " ms\n";
 }
 
 /******************************************************************************
@@ -715,6 +712,7 @@ void Viewer::interface_ogl()
 
 	// Display wave noise's' 1D profile
 	display1DProfileWidget();
+	displayPeformance();
 }
 
 /******************************************************************************
@@ -786,4 +784,45 @@ bool Viewer::display1DProfileWidget()
 	ImGui::End();
 
 	return updateRequested;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::displayPeformance()
+{
+	const float DISTANCE = 10.0f;
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - DISTANCE, io.DisplaySize.y - DISTANCE),
+		ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_AlwaysAutoResize
+		| ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoSavedSettings
+		| ImGuiWindowFlags_NoFocusOnAppearing
+		| ImGuiWindowFlags_NoNav;
+
+	if ( ImGui::Begin( "Example: Fixed Overlay", nullptr, flags ) )
+	{
+		ImGui::Text( "Performance" );
+		ImGui::Separator();
+		ImGui::Text( "FPS          %.1f", ImGui::GetIO().Framerate );
+		ImGui::Text( "Frame        %.3f ms", 1000.0f / ImGui::GetIO().Framerate );
+		ImGui::Text( "Window       %dx%d", this->width(), this->height() );
+		ImGui::Separator();
+
+		// LOG info
+		/*std::cout << "\tTOTAL: ";
+		std::cout << "\t" << std::fixed << std::setw( 9 ) << std::setprecision( 3 ) << std::setfill( ' ' ) << ( mGPUTimeElapsed * 1.e-6 ) << " ms\n";
+		const std::string time = 
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ),  );*/
+		//ImGui::Text("%9.3f ms", mGPUTimeElapsed * 1e-6);
+		ImGui::Text("GPU time");
+		ImGui::SameLine(0); // colonne
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "%9.3f ms", mGPUTimeElapsed * 1e-6 );
+
+	}
+	ImGui::End();
 }
