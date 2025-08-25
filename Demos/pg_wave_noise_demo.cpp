@@ -738,6 +738,11 @@ bool Viewer::display1DProfileWidget()
 	{
 		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "Amplitude (energy distribution)" );
 
+		const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",
+		"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
+		const std::string wave_type = "[" + std::string( items[ waveNoise->item_current ] ) + "]";
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), wave_type.c_str() );
+
 		// Display amplitude's energy distribution
 		{
 			const unsigned int MAX_FREQ = waveNoise->MAX_FREQ;
