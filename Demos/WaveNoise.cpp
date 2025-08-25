@@ -453,6 +453,21 @@ void WaveNoise::precomputePlanarWaveFromFFT1D( double* A, int N, int pow_2 )
 	hvArray1<double>::fft( *F, pow_2, 1, 0, false );
 	printf( "done.\n" );
 
+	// TEST
+	// Fill only one amplitudes distribution for all sampled directions (slot direction #0)
+	// Iterate over the frequency domain
+	for ( int ii = 0; ii < MAX_FREQ; ii++ )
+	{
+		double ampli = 0.0;
+		// Check current allowed frequency bandwith
+		if ( ii >= FREQ_LOW && ii <= FREQ_HIGH )
+		{
+			// Amplitude: get user defined amplitude
+			ampli = F->get( ii ).mod();
+		}
+		spectralEnergyDistribution[ 0 ][ ii ] = ampli;
+	}
+
 	printf( "compute complex wave front...\n" );
 	const int Nfreq = MAX_FREQ;
 	const int finit = 0;
