@@ -455,6 +455,7 @@ class Viewer : public GLViewer
 	GLuint64 mGPUTimeElapsed;
 
 	Wn::WaveNoise* waveNoise;
+	bool mUseContinuousAnimation;
 
 public:
 
@@ -496,6 +497,7 @@ Viewer::Viewer()
 , waveNoise( nullptr )
 , mQueryTimeElapsed( 0 )
 , mGPUTimeElapsed( 0 )
+, mUseContinuousAnimation( false )
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
@@ -638,7 +640,14 @@ void Viewer::draw_ogl()
 	set_uniform_value(18, waveNoise->Ndir);
 	// set_uniform_value(20, Na);
 	set_uniform_value(20, waveNoise->tV);
-	set_uniform_value(21, waveNoise->Time);
+	if ( ! mUseContinuousAnimation )
+	{
+		set_uniform_value( 21, waveNoise->Time );
+	}
+	else
+	{
+		set_uniform_value( 21, current_time() );
+	}
 	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio);
 	set_uniform_value(22, waveNoise->Ratio);
 	set_uniform_value(19, waveNoise->Zoom * waveNoise->Ratio);
@@ -795,6 +804,8 @@ void Viewer::interface_ogl()
 			ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
 			ImGui::SameLine();
 			ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
+			ImGui::SameLine();
+			ImGui::Checkbox( "Continuous", &mUseContinuousAnimation );
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
 		}
 
