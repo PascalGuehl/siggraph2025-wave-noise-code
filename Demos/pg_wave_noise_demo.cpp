@@ -1,15 +1,15 @@
-/*
+ï»¿/*
  * Multi - Dimensional Procedural Wave Noise - Demos
  *
  * ACM Transactions on Graphics(TOG), Vol. 44, No. 4, Article XXX, August 2025
  *
  * SIGGRAPH 2025, August 2025, Vancouver, Canada
  *
- * Pascal Guehl(1), Rémi Allègre(2), Guillaume Gilet(3), Basile Sauvage(2), Marie - Paule Cani(1), Jean - Michel Dischler(2)
+ * Pascal Guehl(1), RÃ©mi AllÃ¨gre(2), Guillaume Gilet(3), Basile Sauvage(2), Marie - Paule Cani(1), Jean - Michel Dischler(2)
  *
  * (1) LIX, Ecole Polytechnique, CNRS, Institut Polytechnique de Paris, France
- * (2) ICube, Université de Strasbourg, CNRS, France
- * (3) Université de Sherbrooke, Canada
+ * (2) ICube, UniversitÃ© de Strasbourg, CNRS, France
+ * (3) UniversitÃ© de Sherbrooke, Canada
  */
 
 /**
@@ -678,37 +678,129 @@ void Viewer::draw_ogl()
  ******************************************************************************/
 void Viewer::interface_ogl()
 {
-	ImGui::Begin("Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
-	ImGui::SetWindowSize(ImVec2(600, 500));
-	ImGui::SetWindowPos(ImVec2(10, 10));
-	//ImGui::Text("FPS: %2.2lf", fps_);
-	ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
-	ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
-	ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
-	ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
-	ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
-	ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
-	ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
+	//ImGui::Begin("Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
+	//ImGui::SetWindowSize(ImVec2(600, 500));
+	//ImGui::SetWindowPos(ImVec2(10, 10));
+	////ImGui::Text("FPS: %2.2lf", fps_);
+	//ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
+	//ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
+	//ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
+	//ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
+	//ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
+	//ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
+	//ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
 
-	// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
-	ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
-	ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
-	ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0/64.0, 1.0);
-	ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
-	const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",	   
-		"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
-	ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
-	const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
-	ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
-	const char* itemsop[] = { "Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular", "Hyperplan", "Reversed Cellular" };
-	ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
-	ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
-	ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
-	ImGui::SliderFloat("STIT Probability", &waveNoise->Proba, 0.0, 1.0);
-	ImGui::SliderInt("STIT Recursions", &waveNoise->NRec, 1, 5);
+	//// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
+	//ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
+	//ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
+	//ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0/64.0, 1.0);
+	//ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
+	//const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",	   
+	//	"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
+	//ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
+	//const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
+	//ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
+	//const char* itemsop[] = { "Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular", "Hyperplan", "Reversed Cellular" };
+	//ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
+	//ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
+	//ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
+	//ImGui::SliderFloat("STIT Probability", &waveNoise->Proba, 0.0, 1.0);
+	//ImGui::SliderInt("STIT Recursions", &waveNoise->NRec, 1, 5);
 
-	// ImGui::SetWindowSize({ 0, 0 });
-	ImGui::End();
+	//// ImGui::SetWindowSize({ 0, 0 });
+	//ImGui::End();
+
+	//-----------------------------------------------------
+		ImGui::Begin("Wave Noise Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
+		ImGui::SetWindowSize(ImVec2(560, 525));
+		ImGui::SetWindowPos(ImVec2(10, 10));
+		// ImGui::Text("FPS: %2.2lf", fps_);
+
+		const float sliderWidth = 100.0f; // largeur personnalisï¿½e pour chaque slider
+		if (ImGui::CollapsingHeader("Spatial Transformation"))
+		{
+			ImGui::PushItemWidth(sliderWidth);
+			ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
+			ImGui::SameLine();
+			ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
+			ImGui::SameLine();
+			ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
+			ImGui::PopItemWidth(); // remet la largeur par dï¿½faut
+
+			ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
+		}
+	
+		// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
+
+		if (ImGui::CollapsingHeader("Spectral Configuration")) // PG
+		{
+			//ImGui::Text("Quality vs.Framerate");
+			if (ImGui::TreeNode("Quality vs. Framerate"))
+			{
+				ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
+				ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
+
+				ImGui::TreePop();
+			}
+
+			//ImGui::Text("Frequency Ranges");
+			if (ImGui::TreeNode("Frequency Ranges"))
+			{
+				ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
+
+				ImGui::PushItemWidth(sliderWidth);
+				ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0 / 64.0, 1.0);
+				ImGui::SameLine();
+				ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
+				ImGui::PopItemWidth(); // remet la largeur par dï¿½faut
+
+				ImGui::TreePop();
+			}
+		}
+
+		if (ImGui::CollapsingHeader("Waveforms & Noise Types")) // PG
+		{
+			const char* items[] = { "noise-gaussian",		"noise-white",			 "noise-blue",
+								   "noise-brown",			"nongauss-crystal1",	 "nongauss-web",
+								   "nongauss-marble",		"nongauss-crystal2",	 "nongauss-scratches",
+								   "nongauss-smooth cells", "noise-two ampli levels" };
+			ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
+
+			const char* itemsop[] = {
+				"Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular",
+				"Hyperplan",	 "Reversed Cellular" };
+			ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
+			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
+		}
+
+		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)")) // PG
+		{
+			ImGui::PushItemWidth(sliderWidth);
+			ImGui::SliderFloat("Subdivision Probability", &waveNoise->Proba, 0.0, 1.0);
+			ImGui::SameLine();
+			ImGui::SliderInt("Nb Recursions", &waveNoise->NRec, 1, 5);
+			ImGui::PopItemWidth(); // remet la largeur par dï¿½faut
+		}
+
+		if (ImGui::CollapsingHeader("Post-Processing & Display")) // PG
+		{
+			const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
+			ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
+			ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
+		}
+
+		if (ImGui::CollapsingHeader("Temporal & Animation Controls")) // PG
+		{
+			ImGui::PushItemWidth(sliderWidth);
+			ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
+			ImGui::SameLine();
+			ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
+			ImGui::PopItemWidth(); // remet la largeur par dï¿½faut
+		}
+
+		// ImGui::SetWindowSize({ 0, 0 });
+		ImGui::End();
+	//-----------------------------------------------------
 
 	// Display wave noise's' 1D profile
 	display1DProfileWidget();
