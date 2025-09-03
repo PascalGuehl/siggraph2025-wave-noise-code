@@ -192,12 +192,26 @@ const float orient = 1.0;
 const int NNmin = 0;
 const float M_PI = 3.14159265358979;
 
-// Per-thread seed
+// PRNG (Pseudo-Random Number Generation)
+// - per-thread seed
 uint seed = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 // FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////
+
+// PRNG (Pseudo-Random Number Generation)
+uint hash( uint x );
+uint hash( uvec2 v );
+void seeding( uint x, uint y, uint z );
+float random();
+float next();
+
+// Wave Noise
+vec2 wavenoise_3D_isotropic( float x, float y, float z );
+vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd );
+vec2 wavenoise_3D_cellular( float x, float y, float z );
+vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec );
 
 /******************************************************************************
  * 1D hash function
@@ -247,6 +261,9 @@ float next()
 	return 2.0 * random() - 1.0;
 }
 
+)"
+R"(
+
 /******************************************************************************
  * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
  * - the sum is isotropic (same energy distribution for all directions)
@@ -268,7 +285,9 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
 			// Configure per "direction" probabilities
 			// strat angular sector
 			seeding( uint( dir ) * 5u, 2u, 3u );
+			// - configure animation
 			float tspeed = tV * sign( next() ) * time;
+			// - configure orientation stratified sampling
 			float anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
 			float alpha1 = 2.0 * M_PI * float( j ) / float( NF + 1 );
 			float alpha2 = 2.0 * M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
@@ -330,161 +349,212 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
     return sum / vec2( 2.0 + 0.2 * float( NN - NNmin ) );
 }
 
+)"
+R"(
+
 /******************************************************************************
  * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
  * - the sum is anisotropic (different energy distribution for some directions)
  ******************************************************************************/
-vec2 anisowavenoise3D(float x, float y, float z, int nd)
+vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 {
-	const int strat = 2;
-	const int NF = NDIR/strat/nd;  // very simple stratified sampling
-
 	vec2 sum = vec2( 0.0 ); // result is complex number
 
-	float analpha, analphawidth, anbeta;
-	int i, j, k;
+	// Iterate through directions (3D stratified sampling)
+	const int strat = 2;
+	const int NF = NDIR / strat / nd;  // very simple stratified sampling
 	int dir = 0;
-	for (j = 0; j < nd*NF; j++) //strat alpha
+	for ( int j = 0; j < nd * NF; j++ ) // stratified alpha
 	{
-		for (i = 0; i < strat; i++) // strat beta
+		for ( int i = 0; i < strat; i++ ) // stratified beta
 		{
 			// Configure per "direction" probabilities
-			seeding(uint(dir) * 5u, 2u, 3u);
-			float tspeed = tV*sign(next())*time;
+			seeding( uint( dir ) * 5u, 2u, 3u );
+			// - configure animation
+			float tspeed = tV * sign( next() ) * time;
+			// - configure orientation stratified sampling
+			float anbeta = acos( 0.25 + anisodd * 0.5 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float alpha1 = ( j < NF ? M_PI / 4.0: 3.0 * M_PI / 4.0 ) + anisodd * M_PI / 8.0 * float( j ) / float( NF + 1 );
+			float alpha2 = ( j < NF ? M_PI / 4.0: 3.0 * M_PI / 4.0 ) + anisodd * M_PI / 8.0 * ( float( j ) + 1.0) / float( NF + 1 );
+			float analpha = ( alpha1 + alpha2 ) / 2.0;
+			float analphawidth = alpha2 - alpha1;
 
-			anbeta = acos(0.25+anisodd*0.5*(float(i)+(0.5*next()+0.5))/float(strat)); 
-			float alpha1 = (j<NF ? M_PI/4.0: 3.0*M_PI/4.0) +anisodd*M_PI/8.0 * float(j) / float(NF+1);
-			float alpha2 = (j<NF ? M_PI/4.0: 3.0*M_PI/4.0) +anisodd*M_PI/8.0 *(float(j) + 1.0) / float(NF+1);
-			analpha = (alpha1 + alpha2) / 2.0;
-			analphawidth = alpha2 - alpha1;
-
-			float aa =  M_PI / 4.0 + analpha + next() * analphawidth * 0.5 ;
+			// Slicing
+			// - draw a random orientation (stratified sampling)
+			float aa =  M_PI / 4.0 + analpha + next() * analphawidth * 0.5;
 			float beta = anbeta + M_PI / 4.0; 
+			// - project the (x,y,z) position on the 1D line
+			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
+			// - interger part (slice id)
+			int iid = ( id > 0.0 ? int( id ) : int( id ) - 1 ); //FASTFLOOR( id );
+			// - fractional part (position inside the slice)
+			float oid = id - float( iid );
 
-			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z;
-			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
-			float oid = id - float(iid);
-
-			seeding(uint(7 * dir), uint(4 * iid), 4u);
+			// Configure per "slice id" along 1D line probabilities (according to direction)
+			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			// - jittering along the 1D line
 			float pl = 0.5 + 0.2 * next();
-			if (oid < pl - 0.3) oid = 0.0;
-			else if (oid > pl + 0.3) oid = 1.0;
-			else oid = (oid - pl + 0.3) / 0.6;
+			// - blending weight between current slice and next slice waves
+			if ( oid < pl - 0.3 ) oid = 0.0;
+			else if ( oid > pl + 0.3 ) oid = 1.0;
+			else oid = ( oid - pl + 0.3 ) / 0.6;
 
-			seeding(uint(4 * dir), uint(4 * iid), 0);
-			float alpha = (analpha + next() * analphawidth);
-			float bb = acos(0.5+0.1*(float(i)+(0.5*next()+0.5))/float(strat));
+			// Compute CURRENT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			// - draw a random orientation
+			float alpha = ( analpha + next() * analphawidth );
+			float bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			// - rotation, scale, then translation of the wave
+			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			// - add wave contribution
+			if ( dir >= NNmin && dir < NN && dir < NDIR )
+			{
+				sum += ( 1.0 - oid ) * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
+			}
 
-			float dd = (1.0 / RATIO * (sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z) + 2.0*next() -tspeed);
-			if (dir>=NNmin && dir<NN && dir<NDIR) sum += (1.0 - oid) * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+			// Compute NEXT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			// - draw a random orientation
+			alpha = ( analpha + next() * analphawidth );
+			bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			// - rotation, scale, then random translation of the wave
+			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			// - add wave contribution
+			if ( dir >= NNmin && dir < NN && dir < NDIR )
+			{
+				sum += oid * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
+			}
 
-			seeding(uint(4 * dir), uint(4 * (iid + 1)), 0);
-			alpha = (analpha + next() * analphawidth);
-			bb = acos(0.5+0.1*(float(i)+(0.5*next()+0.5))/float(strat));
-
-			dd = (1.0 / RATIO * (sin(bb) * cos(alpha) * x + sin(bb) * sin(alpha) * y + cos(bb) * z) + 2.0 * next() -tspeed);
-			if (dir>=NNmin && dir<NN && dir<NDIR) sum += oid * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
-
+			// Update next direction ID
 			dir += 1;
 		}
 	}
-	return sum /  vec2(2.0+0.2*float(NN-NNmin));
+
+	// Result (with normalization)
+	return sum / vec2( 2.0 + 0.2 * float( NN - NNmin ) );
 }
 
 /******************************************************************************
- * ...
+ * Computes cellular wave noise at a given recursion level
  ******************************************************************************/
-vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
+vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 {
 	uint resv = 0;
 	float rvalue = 2.0;
 
-	float analpha, analphawidth, anbeta, anbetawidth;
-	int i, j;
-	const int strat=2;
-	const int NF = NDIR/strat;  // very simple stratified sampling
-	int dir=0;
-	for (j = 0; j <= NF; j++) //strat alpha
+	// Iterate through directions (3D stratified sampling)
+	const int strat = 2;
+	const int NF = NDIR / strat;  // very simple stratified sampling
+	int dir = 0;
+	for ( int j = 0; j <= NF; j++ ) // stratified alpha
 	{
-		for (i = 0; i < strat; i++) // strat beta
+		for ( int i = 0; i < strat; i++ ) // stratified beta
 		{
+			// Configure per "direction" probabilities
 			seeding( uint( dir ) * 5u, 2u, 3u + rec );
-			float tspeed = tV*sign(next())*time;
-			anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			// - configure animation
+			float tspeed = tV * sign( next() ) * time;
+			// - configure orientation stratified sampling
+			float anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
 			float alpha1 = M_PI * float( j ) / float( NF + 1 );
 			float alpha2 = M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
-			analpha = (alpha1 + alpha2) / 2.0;
-			analphawidth = alpha2 - alpha1;
+			float analpha = ( alpha1 + alpha2 ) / 2.0;
+			float analphawidth = alpha2 - alpha1;
 
-			float aa =  M_PI / 4.0*orient + analpha + next() * analphawidth * 0.5 ;
-			float beta = anbeta + M_PI / 4.0*orient; 
+			// Slicing
+			// - draw a random orientation (stratified sampling)
+			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
+			float beta = anbeta + M_PI / 4.0 * orient;
+			// - project the (x,y,z) position on the 1D line
+			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z  + 5.0 + tspeed;
+			// - interger part (slice id)
+			int iid = ( id > 0.0 ? int( id ) : int( id ) - 1 ); //FASTFLOOR( id );
+			// - fractional part (position inside the slice)
+			float oid = id - float( iid );
 
-			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z  + 5.0 + tspeed;
-			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
-			float oid = id - float(iid);
-
-			seeding(uint(7 * dir), uint(4 * iid), 4u);
+			// Configure per "slice id" along 1D line probabilities (according to direction)
+			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			// - jittering along the 1D line
 			float pl = 0.5 + 0.3 * next();
-
-			if (oid <= pl)
+			// - determine closest cell border between current, previous and next cells, along the 1D line (dist min)
+			if ( oid <= pl )
 			{
+				// current cell
 				float dist1 = pl - oid;
-				rvalue = min(dist1,rvalue);
-				seeding(uint(7 * dir), uint(4 * (iid - 1)), 4u);
+				rvalue = min( dist1, rvalue );
+				// previous cell
+				seeding( uint( 7 * dir ), uint( 4 * ( iid - 1 ) ), 4u );
 				float pl2 = 0.5 + 0.3 * next();
 				float dist2 = oid + 1.0 - pl2;
-				rvalue = min(dist2,rvalue);
+				rvalue = min( dist2, rvalue );
 			}
 			else
 			{
+				// current cell
 				float dist1 = oid - pl;
-				rvalue = min(dist1,rvalue);
-				seeding(uint(7 * dir), uint(4 * (iid + 1)), 4u);
+				rvalue = min( dist1, rvalue );
+				// next cell
+				seeding( uint( 7 * dir ), uint( 4 * ( iid + 1 ) ), 4u );
 				float pl2 = 0.5 + 0.3 * next();
 				float dist2 = 1.0 - oid + pl2;
-				rvalue = min(dist2,rvalue);
+				rvalue = min( dist2, rvalue );
 			}
 			// cell index
-			int iidabs = abs(iid);
-			if ((oid <= pl && iidabs % 2 == 0) || (oid > pl && iidabs % 2 == 1)) resv += 1;
+			int iidabs = abs( iid );
+			if ( ( oid <= pl && iidabs % 2 == 0 ) || ( oid > pl && iidabs % 2 == 1 ) ) resv += 1;
 			resv = resv * 2u;
 
-			if (oid <= pl) seeding(uint(4 * dir), uint(4 * iid), 0);
-			else seeding(uint(4 * dir), uint(4 * (iid+1)), 0);
-			float alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
-			float bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
-
-			float dd = sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z + 5.0 + tspeed;
-			int p = (dd>0.0 ? int(dd):int(dd)-1); //FASTFLOOR(dd);
-			dd = dd - float(p);
-			seeding(uint(7 * dir), uint(4 * p), 4u);
+			// Orthogonal tesselation (to current 1D line) to create regular cellular patterns
+			if ( oid <= pl ) seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			else seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			// - draw a random orthogonal orientation (stratified sampling in a cone)
+			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			// - project the (x,y) position on the 1D line
+			float dd = sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z + 5.0 + tspeed;
+			// - interger part (slice id)
+			int p = ( dd > 0.0 ? int( dd ) : int( dd ) - 1 ); //FASTFLOOR( dd );
+			// - fractional part (position inside the slice)
+			dd = dd - float( p);
+			seeding( uint( 7 * dir ), uint( 4 * p ), 4u );
+			// - jittering along the 1D line
 			pl = 0.5 + 0.3 * next();
-			if (dd <= pl)
+			// - determine in which we are, current or previous cell, along the 1D line (dist min)
+			if ( dd <= pl )
 			{
+				// current cell
 				float dist1 = pl - dd;
-				rvalue = min(dist1,rvalue);
-				seeding(uint(7 * dir), uint(4 * (p - 1)), 4u);
+				rvalue = min( dist1, rvalue );
+				// previous cell
+				seeding( uint( 7 * dir ), uint( 4 * ( p - 1 ) ), 4u );
 				float pl2 = 0.5 + 0.3 * next();
 				float dist2 = dd + 1.0 - pl2;
-				rvalue = min(dist2,rvalue);
+				rvalue = min( dist2, rvalue );
 			}
 			else
 			{
+				// current cell
 				float dist1 = dd - pl;
-				rvalue = min(dist1,rvalue);
-				seeding(uint(7 * dir), uint(4 * (p + 1)), 4u);
+				rvalue = min( dist1, rvalue );
+				// next cell
+				seeding( uint( 7 * dir ), uint( 4 * ( p + 1 ) ), 4u );
 				float pl2 = 0.5 + 0.3 * next();
 				float dist2 = 1.0 - dd + pl2;
-				rvalue = min(dist2,rvalue);
+				rvalue = min( dist2, rvalue );
 			}
 			// cell index
-			iidabs = abs(p);
-			if ((dd <= pl && iidabs % 2 == 0) || (dd > pl && iidabs % 2 == 1)) resv += 1;
+			iidabs = abs( p );
+			if ( ( dd <= pl && iidabs % 2 == 0 ) || ( dd > pl && iidabs % 2 == 1 ) ) resv += 1;
 			resv = resv * 2u;
 
+			// Update next direction ID
 			dir += 1;
 		}
 	}
+
+	// Result
 	uint cellident = ( resv * 1453u ) % 255u;
 	return vec2( float( cellident ) / 255.0 * 2.0 - 1.0, rvalue * 20.0 - 1.0 );
 }
@@ -492,10 +562,10 @@ vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
 /******************************************************************************
  * Computes cellular wave noise
  ******************************************************************************/
-vec2 cellwavenoise3D( float x, float y, float z )
+vec2 wavenoise_3D_cellular( float x, float y, float z )
 {
 	// Computer cellular noise
-	vec2 res = isowavenoise3Drec( x, y, z, 0 );
+	vec2 res = wavenoise_3D_cellular_recursive( x, y, z, 0 );
 
 	// Recursive call (simulate STIT patterns)
 	bool cont = true;
@@ -506,7 +576,7 @@ vec2 cellwavenoise3D( float x, float y, float z )
 		seeding( cellident, uint( rr ), 3 );
 		if ( 0.5 * ( next() + 1.0 ) < Proba )
 		{
-			vec2 res2 = isowavenoise3Drec( x, y, z, uint( rr ) );
+			vec2 res2 = wavenoise_3D_cellular_recursive( x, y, z, uint( rr ) );
 
 			res = vec2( res2.x, min( res.y, res2.y ) );
 		}
@@ -534,9 +604,9 @@ void main()
 	vec2 waven = vec2( 0.0 );
     vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
 	if ( Operator == 0 ) waven = wavenoise_3D_isotropic( Xpos.x, Xpos.y, Xpos.z );
-	else if ( Operator == 1 ) waven = anisowavenoise3D( Xpos.x, Xpos.y, Xpos.z, 1 );
-	else if ( Operator == 2 ) waven = anisowavenoise3D( Xpos.x, Xpos.y, Xpos.z, 2 );
-	else waven = cellwavenoise3D( 0.1 * Xpos.x, 0.1 * Xpos.y, 0.1 * Xpos.z );
+	else if ( Operator == 1 ) waven = wavenoise_3D_anisotropic( Xpos.x, Xpos.y, Xpos.z, 1 );
+	else if ( Operator == 2 ) waven = wavenoise_3D_anisotropic( Xpos.x, Xpos.y, Xpos.z, 2 );
+	else waven = wavenoise_3D_cellular( 0.1 * Xpos.x, 0.1 * Xpos.y, 0.1 * Xpos.z );
 
 	// Noise post-processing
 	float val = 0.0;
