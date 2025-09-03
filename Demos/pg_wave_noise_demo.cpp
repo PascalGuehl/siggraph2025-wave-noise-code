@@ -106,9 +106,9 @@ out mat3 NoMat;
  ******************************************************************************/
 
 // Matrix transforms
-layout( location = 1 ) uniform mat4 projectionMatrix;
-layout( location = 2 ) uniform mat4 viewMatrix;
-layout( location = 3 ) uniform mat3 normalMatrix;
+layout( location = 1 ) uniform mat4 uProjectionMatrix;
+layout( location = 2 ) uniform mat4 uViewMatrix;
+layout( location = 3 ) uniform mat3 uNormalMatrix;
 
 /******************************************************************************
  * Main Function
@@ -119,13 +119,13 @@ void main()
 	Co = vec3( 0.5 ) + position_in * 0.5;
 	NCo = normal_in;
 	TCo = tangents_in;
-	No = normalMatrix * normal_in;
-	NoMat = normalMatrix;
-	vec4 Po4 = viewMatrix * vec4( position_in, 1.0 );
+	No = uNormalMatrix * normal_in;
+	NoMat = uNormalMatrix;
+	vec4 Po4 = uViewMatrix * vec4( position_in, 1.0 );
 	Po = Po4.xyz;
 
 	// Send position to clip space
-	gl_Position = projectionMatrix * Po4;
+	gl_Position = uProjectionMatrix * Po4;
 }
 )";
 
@@ -591,15 +591,6 @@ vec2 wavenoise_3D_cellular( float x, float y, float z )
 ////////////////////////////////////////////////////////////////////////////////
 void main()
 {
-	vec3 Nco = normalize( NCo );
-	vec3 Nnn = NCo;
-	if ( gl_FrontFacing == false ) Nnn = -Nnn;
-	vec3 L = normalize( light_pos - Po );
-	vec3 col;
-
-	vec3 Npp = normalize( TCo );
-	vec3 Ncc = cross( Nnn, Npp );
-
 	// Noise computation
 	vec2 waven = vec2( 0.0 );
     vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
@@ -624,6 +615,12 @@ void main()
 	}
 
 	// Shading (ADS: ambient, diffuse, specular)
+	vec3 Nco = normalize( NCo );
+	vec3 Nnn = NCo;
+	if ( gl_FrontFacing == false ) Nnn = -Nnn;
+	vec3 L = normalize( light_pos - Po );
+	//vec3 Npp = normalize( TCo );
+	//vec3 Ncc = cross( Nnn, Npp );
 	vec3 N = normalize( NoMat * normalize( Nnn ) );
 	float lamb = abs( dot( N, L ) );
 	vec3 E = normalize( -Po );
@@ -792,8 +789,13 @@ void Viewer::draw_ogl()
 	waveNoise->FREQ_LOW = (int)(waveNoise->Ffreq_low * 64.0);
 	waveNoise->FREQ_HIGH = (int)(waveNoise->Ffreq_high * 64.0);
 	prg_p->bind();
-	tex->bind(0);
-	texd->bind(1);
+
+	// Bind textures
+	// - precomputed 1D wave profile
+	tex->bind( 0 );
+	// - precomputed 1D wave gradient
+	texd->bind( 1 );
+
 	if (waveNoise->FREQ_LOW != waveNoise->sFREQ_LOW || waveNoise->FREQ_HIGH != waveNoise->sFREQ_HIGH || waveNoise->item_current != waveNoise->old_item ||
 		(waveNoise->item_current >= 4 && waveNoise->old_power != waveNoise->Power))
 	{
