@@ -78,11 +78,13 @@ static const std::string p_vert = R"(
 ////////////////////////////////////////////////////////////////////////////////
 // VERSION
 ////////////////////////////////////////////////////////////////////////////////
+
 #version 460
 
 /******************************************************************************
  * INPUTS
  ******************************************************************************/
+
 // Mesh attributes
 layout( location = 1 ) in vec3 position_in;
 layout( location = 2 ) in vec3 normal_in;
@@ -92,6 +94,7 @@ layout( location = 4 ) in vec3 tangents_in;
 /******************************************************************************
  * OUTPUTS
  ******************************************************************************/
+
 out vec3 Po;
 out vec3 No;
 out vec3 Co;
@@ -101,6 +104,7 @@ out mat3 NoMat;
 /******************************************************************************
  * UNIFORMS
  ******************************************************************************/
+
 // Matrix transforms
 layout( location = 1 ) uniform mat4 projectionMatrix;
 layout( location = 2 ) uniform mat4 viewMatrix;
@@ -130,12 +134,14 @@ static const std::string p_frag = R"(
 ////////////////////////////////////////////////////////////////////////////////
 // VERSION
 ////////////////////////////////////////////////////////////////////////////////
+
 #version 460
 precision highp float;
 
 ////////////////////////////////////////////////////////////////////////////////
 // INPUTS
 ////////////////////////////////////////////////////////////////////////////////
+
 in vec3 Po;
 in vec3 No;
 in vec3 Co;
@@ -151,25 +157,24 @@ out vec3 frag_out;
 // UNIFORMS
 ////////////////////////////////////////////////////////////////////////////////
 
-const int NDIRMAX = 100; 
-layout(location=10) uniform vec3 color_diff;
-layout(location=11) uniform vec3 color_amb;
-layout(location=12) uniform vec3 color_spec;
-layout(location=13) uniform float Ns;
-layout(location=14) uniform vec3 light_pos;
-layout(location=15) uniform int NDIR;
-layout(location=16) uniform float anisodd;
+layout( location = 10 ) uniform vec3 color_diff;
+layout( location = 11 ) uniform vec3 color_amb;
+layout( location = 12 ) uniform vec3 color_spec;
+layout( location = 13 ) uniform float Ns;
+layout( location = 14 ) uniform vec3 light_pos;
+layout( location = 15 ) uniform int NDIR;
+layout( location = 16 ) uniform float anisodd;
 
-layout(location=18) uniform int NN;
-layout(location=19) uniform float zoom;
-layout(location=20) uniform float tV;
-layout(location=21) uniform float time;
-layout(location=22) uniform float RATIO;
-layout(location=23) uniform int QQ;
-layout(location=24) uniform float contrast;
-layout(location=25) uniform float tX;
-layout(location=26) uniform float tY;
-layout(location=27) uniform float tZ;
+layout( location = 18 ) uniform int NN;
+layout( location = 19 ) uniform float zoom;
+layout( location = 20 ) uniform float tV;
+layout( location = 21 ) uniform float time;
+layout( location = 22 ) uniform float RATIO;
+layout( location = 23 ) uniform int QQ;
+layout( location = 24 ) uniform float contrast;
+layout( location = 25 ) uniform float tX;
+layout( location = 26 ) uniform float tY;
+layout( location = 27 ) uniform float tZ;
 
 layout( location = 30 ) uniform int Operator;
 layout( location = 31 ) uniform int NRec;
@@ -178,22 +183,27 @@ layout( location = 32 ) uniform float Proba;
 layout( binding = 0 ) uniform sampler1D wave;
 layout( binding = 1 ) uniform sampler1D waved;
 
-/******************************************************************************
- * LOCAL VARIABLES
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// LOCAL VARIABLES
+////////////////////////////////////////////////////////////////////////////////
 
-uint seed = 1;
+const int NDIRMAX = 100;
 const float orient = 1.0;
 const int NNmin = 0;
+const float M_PI = 3.14159265358979;
+
+// Per-thread seed
+uint seed = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+// FUNCTIONS
+////////////////////////////////////////////////////////////////////////////////
 
 /******************************************************************************
- * FUNCTIONS
+ * 1D hash function
  ******************************************************************************/
-
-/******************************************************************************
- * ...
- ******************************************************************************/
-uint hash( uint x ) {
+uint hash( uint x )
+{
     x += ( x << 10u );
     x ^= ( x >>  6u );
     x += ( x <<  3u );
@@ -203,45 +213,131 @@ uint hash( uint x ) {
 }
 
 /******************************************************************************
- * ...
+ * 2D hash function
  ******************************************************************************/
-uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)); }
-
-/******************************************************************************
- * ...
- ******************************************************************************/
-float random()
+uint hash( uvec2 v )
 {
- seed = seed*22695477u+1u;
- uint v = seed & 0xffffu;
- return float(v)/float(0xffffu);
+	return hash( v.x ^ hash( v.y ) );
 }
 
 /******************************************************************************
- * ...
+ * Set the seed for a given integer triplet (x,y,z)
+* - all next drawn random numbers will be based on this current seed (for replicability of PRNG)
  ******************************************************************************/
-float next() { return 2.0*random()-1.0; }
+void seeding( uint x, uint y, uint z )
+{
+	seed = hash( x + hash( y + hash( z ) ) );
+}
 
 /******************************************************************************
- * ...
+ * Random value between 0 and 1.0
  ******************************************************************************/
-void seeding(uint x, uint y, uint z)  { seed = hash(x + hash(y + hash(z))); }
-
-//float RATIO=8.0;
-const float M_PI = 3.14159265358979;
-int NF = 1;
-int NFS[3];
-//const int NFST = 10; // 10;
-
-//vec3 grad;
+float random()
+{
+	seed = seed * 22695477u + 1u;
+	uint v = seed & 0xffffu;
+	return float( v ) / float( 0xffffu );
+}
 
 /******************************************************************************
- * ...
+ * Random value between -1.0 and 1.0
+ ******************************************************************************/
+float next()
+{
+	return 2.0 * random() - 1.0;
+}
+
+/******************************************************************************
+ * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
+ * - the sum is isotropic (same energy distribution for all directions)
+ ******************************************************************************/
+vec2 wavenoise_3D_isotropic( float x, float y, float z )
+{
+	vec2 sum = vec2( 0.0 ); // result is complex number
+
+	const float poids = 1.0;
+
+	// Iterate through directions (3D stratified sampling)
+	const int strat = 4;
+	const int NF = NDIR / strat;  // very simple stratified sampling
+	int dir = 0;
+	for ( int j = 0; j <= NF; j++ ) // stratified alpha
+	{
+		for ( int i = 0; i < strat; i++ ) // stratified beta
+		{
+			// Configure per "direction" probabilities
+			// strat angular sector
+			seeding( uint( dir ) * 5u, 2u, 3u );
+			float tspeed = tV * sign( next() ) * time;
+			float anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float alpha1 = 2.0 * M_PI * float( j ) / float( NF + 1 );
+			float alpha2 = 2.0 * M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
+			float analpha = ( alpha1 + alpha2 ) / 2.0;
+			float analphawidth = alpha2 - alpha1;
+
+			// Slicing
+			// - draw a random orientation (stratified sampling)
+			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
+			float beta = anbeta + M_PI / 4.0 * orient;
+			// - project the (x,y,z) position on the 1D line
+			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
+			// - interger part (slice id)
+			int iid = ( id > 0.0 ? int( id ) : int( id ) - 1 ); //FASTFLOOR( id );
+			// - fractional part (position inside the slice)
+			float oid = id - float( iid );
+
+			// Configure per "slice id" along 1D line probabilities (according to direction)
+			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			// - jittering along the 1D line
+			float pl = 0.5 + 0.2 * next();
+			// - blending weight between current slice and next slice waves
+			if ( oid < pl - 0.3 ) oid = 0.0;
+			else if (oid > pl + 0.3) oid = 1.0;
+			else oid = ( oid - pl + 0.3 ) / 0.6;
+
+			// Compute CURRENT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			// - draw a random orientation
+			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			// - rotation, scale, then translation of the wave
+			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			// - add wave contribution
+			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
+				sum += poids * ( 1.0 - oid ) * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
+			}
+
+			// Compute NEXT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			// - draw a random orientation
+			alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			// - rotation, scale, then random translation of the wave
+			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			// - add wave contribution
+			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
+				sum += poids * oid * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
+			}
+
+			// Update next direction ID
+			dir += 1;
+		}
+	}
+
+	// Result (with normalization)
+    return sum / vec2( 2.0 + 0.2 * float( NN - NNmin ) );
+}
+
+/******************************************************************************
+ * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
+ * - the sum is anisotropic (different energy distribution for some directions)
  ******************************************************************************/
 vec2 anisowavenoise3D(float x, float y, float z, int nd)
 {
 	const int strat = 2;
-	NF = NDIR/strat/nd;  // very simple stratified sampling
+	const int NF = NDIR/strat/nd;  // very simple stratified sampling
 
 	vec2 sum = vec2( 0.0 ); // result is complex number
 
@@ -296,88 +392,6 @@ vec2 anisowavenoise3D(float x, float y, float z, int nd)
 }
 
 /******************************************************************************
- * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
- ******************************************************************************/
-vec2 wavenoise_3D_isotropic( float x, float y, float z )
-{
-	vec2 sum = vec2( 0.0 ); // result is complex number
-
-	float analpha, analphawidth, anbeta, anbetawidth;
-	float poids = 1.0; 
-	const int strat = 4;
-	NF = NDIR / strat;  // very simple stratified sampling
-	int dir = 0;
-	
-	// Iterate through directions (3D stratified sampling)
-	for ( int j = 0; j <= NF; j++ ) // stratified alpha
-	{
-		for ( int i = 0; i < strat; i++ ) // stratified beta
-		{
-			// Configure per "direction" probabilities
-			// strat angular sector
-			seeding( uint( dir ) * 5u, 2u, 3u );
-			float tspeed = tV * sign( next() ) * time;
-			anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
-			float alpha1 = 2.0 * M_PI * float( j ) / float( NF + 1 );
-			float alpha2 = 2.0 * M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
-			analpha = ( alpha1 + alpha2 ) / 2.0;
-			analphawidth = alpha2 - alpha1;
-
-			// Slicing
-			// - draw a random orientation (stratified sampling)
-			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
-			float beta = anbeta + M_PI / 4.0 * orient;
-			// - project the (x,y,z) position on the 1D line
-			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
-			// - interger part (slice id)
-			int iid = ( id > 0.0 ? int( id ) : int( id ) - 1 ); //FASTFLOOR( id );
-			// - fractional part (position inside the slice)
-			float oid = id - float( iid );
-
-			// Configure per "slice id" along 1D line probabilities (according to direction)
-			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
-			// - jittering along the 1D line
-			float pl = 0.5 + 0.2 * next();
-			if ( oid < pl - 0.3 ) oid = 0.0;
-			else if (oid > pl + 0.3) oid = 1.0;
-			else oid = ( oid - pl + 0.3 ) / 0.6;
-
-			// Left wave
-			// Compute CURRENT (slice) wave (along 1D line, according to direction)
-			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
-			// - draw a random orientation
-			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
-			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
-			// - rotation, scale, then translation of the wave
-			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
-			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
-				sum += poids * ( 1.0 - oid ) * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
-			}
-
-			// Right wave
-			// Compute NEXT (slice) wave (along 1D line, according to direction)
-			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
-			// - draw a random orientation
-			alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
-			bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
-			// - rotation, scale, then random translation of the wave
-			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
-			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
-				sum += poids * oid * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
-			}
-
-			// Update next direction ID
-			dir += 1;
-		}
-	}
-
-	// Normalization
-    return sum / vec2( 2.0 + 0.2 * float( NN - NNmin ) );
-}
-
-/******************************************************************************
  * ...
  ******************************************************************************/
 vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
@@ -388,7 +402,7 @@ vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
 	float analpha, analphawidth, anbeta, anbetawidth;
 	int i, j;
 	const int strat=2;
-	NF = NDIR/strat;  // very simple stratified sampling
+	const int NF = NDIR/strat;  // very simple stratified sampling
 	int dir=0;
 	for (j = 0; j <= NF; j++) //strat alpha
 	{
@@ -502,9 +516,9 @@ vec2 cellwavenoise3D( float x, float y, float z )
 	return res;
 }
 
-/******************************************************************************
- * Main Function
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// MAIN PROGRAM
+////////////////////////////////////////////////////////////////////////////////
 void main()
 {
 	vec3 Nco = normalize( NCo );
