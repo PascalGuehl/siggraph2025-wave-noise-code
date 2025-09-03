@@ -73,40 +73,78 @@ extern "C"
 //  SHADERS
 //////////////////////////////////////////////////////////////////////////////////////
 
+// VERTEX shader
 static const std::string p_vert = R"(
+////////////////////////////////////////////////////////////////////////////////
+// VERSION
+////////////////////////////////////////////////////////////////////////////////
 #version 460
-layout(location=1) uniform mat4 projectionMatrix;
-layout(location=2) uniform mat4 viewMatrix;
-layout(location=3) uniform mat3 normalMatrix;
 
-layout(location=1) in vec3 position_in;
-layout(location=2) in vec3 normal_in;
-layout(location=3) in vec3 text_in;
-layout(location = 4) in vec3 tangents_in;
+/******************************************************************************
+ * INPUTS
+ ******************************************************************************/
+// Mesh attributes
+layout( location = 1 ) in vec3 position_in;
+layout( location = 2 ) in vec3 normal_in;
+layout( location = 3 ) in vec3 text_in;
+layout( location = 4 ) in vec3 tangents_in;
 
+/******************************************************************************
+ * OUTPUTS
+ ******************************************************************************/
 out vec3 Po;
 out vec3 No;
 out vec3 Co;
 out vec3 NCo, TCo;
 out mat3 NoMat;
 
+/******************************************************************************
+ * UNIFORMS
+ ******************************************************************************/
+// Matrix transforms
+layout( location = 1 ) uniform mat4 projectionMatrix;
+layout( location = 2 ) uniform mat4 viewMatrix;
+layout( location = 3 ) uniform mat3 normalMatrix;
 
+/******************************************************************************
+ * Main Function
+ ******************************************************************************/
 void main()
 {
-	Co = vec3(0.5)+position_in*0.5;
+	// Output data
+	Co = vec3( 0.5 ) + position_in * 0.5;
 	NCo = normal_in;
 	TCo = tangents_in;
 	No = normalMatrix * normal_in;
 	NoMat = normalMatrix;
-	vec4 Po4 = viewMatrix * vec4(position_in,1);
+	vec4 Po4 = viewMatrix * vec4( position_in, 1.0 );
 	Po = Po4.xyz;
+
+	// Send position to clip space
 	gl_Position = projectionMatrix * Po4;
 }
 )";
 
+// FRAGMENT shader
 static const std::string p_frag = R"(
+////////////////////////////////////////////////////////////////////////////////
+// VERSION
+////////////////////////////////////////////////////////////////////////////////
 #version 460
 precision highp float;
+
+////////////////////////////////////////////////////////////////////////////////
+// INPUTS
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// OUTPUTS
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// UNIFORMS
+////////////////////////////////////////////////////////////////////////////////
+
 in vec3 Po;
 in vec3 No;
 in vec3 Co;
@@ -396,6 +434,9 @@ for (rr=1; rr<NRec && cont; rr++)
 return res;
 }
 
+/******************************************************************************
+ * Main Function
+ ******************************************************************************/
 void main()
 {
 	vec3 Nco = normalize(NCo);
