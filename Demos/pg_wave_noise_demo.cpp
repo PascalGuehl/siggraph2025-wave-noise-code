@@ -136,21 +136,20 @@ precision highp float;
 ////////////////////////////////////////////////////////////////////////////////
 // INPUTS
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// OUTPUTS
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// UNIFORMS
-////////////////////////////////////////////////////////////////////////////////
-
 in vec3 Po;
 in vec3 No;
 in vec3 Co;
 in vec3 NCo, TCo;
 in mat3 NoMat;
+
+////////////////////////////////////////////////////////////////////////////////
+// OUTPUTS
+////////////////////////////////////////////////////////////////////////////////
 out vec3 frag_out;
+
+////////////////////////////////////////////////////////////////////////////////
+// UNIFORMS
+////////////////////////////////////////////////////////////////////////////////
 
 const int NDIRMAX = 100; 
 layout(location=10) uniform vec3 color_diff;
@@ -160,8 +159,7 @@ layout(location=13) uniform float Ns;
 layout(location=14) uniform vec3 light_pos;
 layout(location=15) uniform int NDIR;
 layout(location=16) uniform float anisodd;
-const float orient=1.0;
-const int NNmin=0;
+
 layout(location=18) uniform int NN;
 layout(location=19) uniform float zoom;
 layout(location=20) uniform float tV;
@@ -173,13 +171,28 @@ layout(location=25) uniform float tX;
 layout(location=26) uniform float tY;
 layout(location=27) uniform float tZ;
 
-layout(location=30) uniform int Operator;
-layout(location=31) uniform int NRec;
-layout(location=32) uniform float Proba;
+layout( location = 30 ) uniform int Operator;
+layout( location = 31 ) uniform int NRec;
+layout( location = 32 ) uniform float Proba;
 
-layout(binding=0) uniform sampler1D wave;
-layout(binding=1) uniform sampler1D waved;
+layout( binding = 0 ) uniform sampler1D wave;
+layout( binding = 1 ) uniform sampler1D waved;
 
+/******************************************************************************
+ * LOCAL VARIABLES
+ ******************************************************************************/
+
+uint seed = 1;
+const float orient = 1.0;
+const int NNmin = 0;
+
+/******************************************************************************
+ * FUNCTIONS
+ ******************************************************************************/
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 uint hash( uint x ) {
     x += ( x << 10u );
     x ^= ( x >>  6u );
@@ -188,16 +201,30 @@ uint hash( uint x ) {
     x += ( x << 15u );
     return x;
 }
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)); }
 
-uint seed=1;
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 float random()
 {
  seed = seed*22695477u+1u;
  uint v = seed & 0xffffu;
  return float(v)/float(0xffffu);
 }
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 float next() { return 2.0*random()-1.0; }
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 void seeding(uint x, uint y, uint z)  { seed = hash(x + hash(y + hash(z))); }
 
 //float RATIO=8.0;
@@ -208,20 +235,24 @@ int NFS[3];
 
 //vec3 grad;
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 vec2 anisowavenoise3D(float x, float y, float z, int nd)
 {
-	const int strat=2;
+	const int strat = 2;
 	NF = NDIR/strat/nd;  // very simple stratified sampling
 
-	vec2 sum = vec2(0.0); // result is complex number
+	vec2 sum = vec2( 0.0 ); // result is complex number
 
 	float analpha, analphawidth, anbeta;
 	int i, j, k;
-	int dir=0;
+	int dir = 0;
 	for (j = 0; j < nd*NF; j++) //strat alpha
 	{
 		for (i = 0; i < strat; i++) // strat beta
 		{
+			// Configure per "direction" probabilities
 			seeding(uint(dir) * 5u, 2u, 3u);
 			float tspeed = tV*sign(next())*time;
 
@@ -264,62 +295,91 @@ vec2 anisowavenoise3D(float x, float y, float z, int nd)
 	return sum /  vec2(2.0+0.2*float(NN-NNmin));
 }
 
-vec2 isowavenoise3D(float x, float y, float z)
+/******************************************************************************
+ * Computes a sum of random waves in 3D at spatial location (x,y,z) using a single precomputed 1D table
+ ******************************************************************************/
+vec2 wavenoise_3D_isotropic( float x, float y, float z )
 {
-	vec2 sum = vec2(0.0); // result is complex number
+	vec2 sum = vec2( 0.0 ); // result is complex number
+
 	float analpha, analphawidth, anbeta, anbetawidth;
 	float poids = 1.0; 
-	int i, j;
-	const int strat=4;
-	NF = NDIR/strat;  // very simple stratified sampling
-	int dir=0;
-	for (j = 0; j <= NF; j++) //strat alpha
+	const int strat = 4;
+	NF = NDIR / strat;  // very simple stratified sampling
+	int dir = 0;
+	
+	// Iterate through directions (3D stratified sampling)
+	for ( int j = 0; j <= NF; j++ ) // stratified alpha
 	{
-		for (i = 0; i < strat; i++) // strat beta
+		for ( int i = 0; i < strat; i++ ) // stratified beta
 		{
+			// Configure per "direction" probabilities
 			// strat angular sector
-			seeding(uint(dir) * 5u, 2u, 3u);
-			float tspeed = tV*sign(next())*time;
-			anbeta = acos((float(i)+(0.5*next()+0.5))/float(strat)); 
-			float alpha1 = 2.0 * M_PI * float(j) / float(NF+1);
-			float alpha2 = 2.0 * M_PI * (float(j) + 1.0) / float(NF+1);
-			analpha = (alpha1 + alpha2) / 2.0;
+			seeding( uint( dir ) * 5u, 2u, 3u );
+			float tspeed = tV * sign( next() ) * time;
+			anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float alpha1 = 2.0 * M_PI * float( j ) / float( NF + 1 );
+			float alpha2 = 2.0 * M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
+			analpha = ( alpha1 + alpha2 ) / 2.0;
 			analphawidth = alpha2 - alpha1;
 
-			// slice
-			float aa =  M_PI / 4.0*orient + analpha + next() * analphawidth * 0.5 ;
-			float beta = anbeta + M_PI / 4.0*orient; 
-			float id = sin(beta)*cos(aa) * x + sin(beta)*sin(aa) * y + cos(beta) * z;
-			int iid = (id>0.0 ? int(id):int(id)-1); //FASTFLOOR(id);
-			float oid = id - float(iid);
-			seeding(uint(7 * dir), uint(4 * iid), 4u);
-			float pl = 0.5 + 0.2 * next();
-			if (oid < pl - 0.3) oid = 0.0;
-			else if (oid > pl + 0.3) oid = 1.0;
-			else oid = (oid - pl + 0.3) / 0.6;
+			// Slicing
+			// - draw a random orientation (stratified sampling)
+			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
+			float beta = anbeta + M_PI / 4.0 * orient;
+			// - project the (x,y,z) position on the 1D line
+			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
+			// - interger part (slice id)
+			int iid = ( id > 0.0 ? int( id ) : int( id ) - 1 ); //FASTFLOOR( id );
+			// - fractional part (position inside the slice)
+			float oid = id - float( iid );
 
-			// wave left
-			seeding(uint(4 * dir), uint(4 * iid), 0);
-			float alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
-			float bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
-			float dd = (1.0 / RATIO * (sin(bb)*cos(alpha) * x + sin(bb)*sin(alpha) * y + cos(bb) * z) + 2.0 * next()-tspeed);
-			if (dir>=NNmin && dir<NN && dir<NDIR) {
-				sum += poids*(1.0 - oid) * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+			// Configure per "slice id" along 1D line probabilities (according to direction)
+			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			// - jittering along the 1D line
+			float pl = 0.5 + 0.2 * next();
+			if ( oid < pl - 0.3 ) oid = 0.0;
+			else if (oid > pl + 0.3) oid = 1.0;
+			else oid = ( oid - pl + 0.3 ) / 0.6;
+
+			// Left wave
+			// Compute CURRENT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			// - draw a random orientation
+			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			// - rotation, scale, then translation of the wave
+			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
+				sum += poids * ( 1.0 - oid ) * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
 			}
-			// wave right
-			seeding(uint(4 * dir), uint(4 * (iid + 1)), 0);
-			alpha = (analpha + next() * analphawidth)*orient+aa*(1.0-orient);
-			bb = acos((float(i)+(0.5*next()+0.5))/float(strat))*orient+beta*(1.0-orient);
-			dd = (1.0 / RATIO * (sin(bb) * cos(alpha) * x + sin(bb) * sin(alpha) * y + cos(bb) * z) + 2.0 * next() -tspeed);
-			if (dir>=NNmin && dir<NN && dir<NDIR) {
-				sum += poids* oid * (2.0*texture(wave,fract(dd)).xy-vec2(1.0));
+
+			// Right wave
+			// Compute NEXT (slice) wave (along 1D line, according to direction)
+			// - configure per "wave" probabilities
+			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			// - draw a random orientation
+			alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			// - rotation, scale, then random translation of the wave
+			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
+				sum += poids * oid * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
 			}
+
+			// Update next direction ID
 			dir += 1;
 		}
 	}
-    return sum/vec2(2.0+0.2*float(NN-NNmin));
+
+	// Normalization
+    return sum / vec2( 2.0 + 0.2 * float( NN - NNmin ) );
 }
 
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
 {
 	uint resv = 0;
@@ -334,11 +394,11 @@ vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
 	{
 		for (i = 0; i < strat; i++) // strat beta
 		{
-			seeding(uint(dir) * 5u, 2u, 3u+rec);
+			seeding( uint( dir ) * 5u, 2u, 3u + rec );
 			float tspeed = tV*sign(next())*time;
-			anbeta = acos((float(i)+(0.5*next()+0.5))/float(strat)); 
-			float alpha1 = M_PI * float(j) / float(NF+1);
-			float alpha2 = M_PI * (float(j) + 1.0) / float(NF+1);
+			anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float alpha1 = M_PI * float( j ) / float( NF + 1 );
+			float alpha2 = M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
 			analpha = (alpha1 + alpha2) / 2.0;
 			analphawidth = alpha2 - alpha1;
 
@@ -411,27 +471,35 @@ vec2 isowavenoise3Drec(float x, float y, float z, uint rec)
 			dir += 1;
 		}
 	}
-	uint cellident = (resv * 1453u) % 255u;
-	return vec2(float(cellident)/255.0*2.0-1.0,rvalue*20.0-1.0);
+	uint cellident = ( resv * 1453u ) % 255u;
+	return vec2( float( cellident ) / 255.0 * 2.0 - 1.0, rvalue * 20.0 - 1.0 );
 }
 
-vec2 cellwavenoise3D(float x, float y, float z)
+/******************************************************************************
+ * Computes cellular wave noise
+ ******************************************************************************/
+vec2 cellwavenoise3D( float x, float y, float z )
 {
-int rr=0;
-vec2 res = isowavenoise3Drec(x,y,z,0);
-bool cont=true;
-for (rr=1; rr<NRec && cont; rr++)
+	// Computer cellular noise
+	vec2 res = isowavenoise3Drec( x, y, z, 0 );
+
+	// Recursive call (simulate STIT patterns)
+	bool cont = true;
+	int rr = 0;
+	for ( rr = 1; rr < NRec && cont; rr++ )
 	{
-	uint cellident = uint(255.0*(res.x+1.0)*0.5);
-	seeding(cellident, uint(rr), 3);
-	if (0.5*(next()+1.0)<Proba)
+		uint cellident = uint( 255.0 * ( res.x + 1.0 ) * 0.5 );
+		seeding( cellident, uint( rr ), 3 );
+		if ( 0.5 * ( next() + 1.0 ) < Proba )
 		{
-			vec2 res2 = isowavenoise3Drec(x,y,z,uint(rr));
-			res = vec2(res2.x, min(res.y,res2.y));
+			vec2 res2 = isowavenoise3Drec( x, y, z, uint( rr ) );
+
+			res = vec2( res2.x, min( res.y, res2.y ) );
 		}
-	else cont=false;
+		else cont = false;
 	}
-return res;
+
+	return res;
 }
 
 /******************************************************************************
@@ -439,41 +507,47 @@ return res;
  ******************************************************************************/
 void main()
 {
-	vec3 Nco = normalize(NCo);
+	vec3 Nco = normalize( NCo );
 	vec3 Nnn = NCo;
-	if (gl_FrontFacing==false) Nnn = -Nnn;
-	vec3 L = normalize(light_pos-Po);
+	if ( gl_FrontFacing == false ) Nnn = -Nnn;
+	vec3 L = normalize( light_pos - Po );
 	vec3 col;
 
-	vec3 Npp = normalize(TCo);
-	vec3 Ncc = cross(Nnn,Npp);
-	vec2 waven=vec2(0.0);
-    float val = 0.0;
-	vec3 Xpos = vec3(zoom*Co.x+tX, zoom*Co.y+tY, zoom*Co.z+tZ);
-	if (Operator==0) waven = isowavenoise3D(Xpos.x, Xpos.y, Xpos.z);
-	else if (Operator==1) waven = anisowavenoise3D(Xpos.x, Xpos.y, Xpos.z, 1);
-	else if (Operator==2) waven = anisowavenoise3D(Xpos.x, Xpos.y, Xpos.z, 2);
-	else waven = cellwavenoise3D(0.1*Xpos.x, 0.1*Xpos.y, 0.1*Xpos.z);
-	if (Operator<=2) { 
-		if (QQ==0) val = clamp((contrast*waven.x+0.5), 0.0, 1.0);
-		else if (QQ==1) val = clamp((contrast*waven.y+0.5), 0.0, 1.0);
-		else if (QQ==2) val = clamp(length(waven)*2.0*contrast, 0.0, 1.0);
-		else val = atan(waven.y, waven.x)/M_PI+0.5; //smoothstep(-1.0, 1.0, cos(atan(waven.y, waven.x))); 
-		}
+	vec3 Npp = normalize( TCo );
+	vec3 Ncc = cross( Nnn, Npp );
+
+	// Noise computation
+	vec2 waven = vec2( 0.0 );
+    vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
+	if ( Operator == 0 ) waven = wavenoise_3D_isotropic( Xpos.x, Xpos.y, Xpos.z );
+	else if ( Operator == 1 ) waven = anisowavenoise3D( Xpos.x, Xpos.y, Xpos.z, 1 );
+	else if ( Operator == 2 ) waven = anisowavenoise3D( Xpos.x, Xpos.y, Xpos.z, 2 );
+	else waven = cellwavenoise3D( 0.1 * Xpos.x, 0.1 * Xpos.y, 0.1 * Xpos.z );
+
+	// Noise post-processing
+	float val = 0.0;
+	if ( Operator <= 2 ) { 
+		if ( QQ == 0 ) val = clamp( ( contrast * waven.x + 0.5 ), 0.0, 1.0 );
+		else if ( QQ == 1 ) val = clamp( ( contrast * waven.y + 0.5 ), 0.0, 1.0 );
+		else if ( QQ == 2 ) val = clamp( length( waven ) * 2.0 * contrast, 0.0, 1.0 );
+		else val = atan( waven.y, waven.x ) / M_PI + 0.5; //smoothstep( -1.0, 1.0, cos( atan( waven.y, waven.x ) ) ); 
+	}
 	else {
-		if (Operator==3) val = clamp((0.5*waven.x+0.5), 0.0, 1.0);
-		else if (Operator==4) val = 0.8*pow(clamp((0.5*waven.y+0.5), 0.0, 1.0),contrast)+0.2;
-		else if (Operator==5) val = step(0.05, 0.5*waven.y+0.5);
-		else val = 1.0-pow(clamp((0.5*waven.y+0.5), 0.0, 1.0),contrast);
+		if ( Operator == 3 ) val = clamp( ( 0.5 * waven.x + 0.5 ), 0.0, 1.0 );
+		else if ( Operator == 4 ) val = 0.8 * pow( clamp( ( 0.5 * waven.y + 0.5 ), 0.0, 1.0 ), contrast ) + 0.2;
+		else if ( Operator == 5 ) val = step( 0.05, 0.5 * waven.y + 0.5 );
+		else val = 1.0 - pow( clamp( ( 0.5 * waven.y + 0.5 ), 0.0, 1.0 ), contrast );
 	}
 
-	vec3 N = normalize(NoMat*normalize(Nnn));
-	float lamb = abs(dot(N,L));
-	vec3 E = normalize(-Po);
-	vec3 R = reflect(-L, N);
-	float spec = Ns==0.0 ? 0.0 : pow( max(dot(R,E), 0.0), Ns);
+	// Shading (ADS: ambient, diffuse, specular)
+	vec3 N = normalize( NoMat * normalize( Nnn ) );
+	float lamb = abs( dot( N, L ) );
+	vec3 E = normalize( -Po );
+	vec3 R = reflect( -L, N );
+	float spec = Ns == 0.0 ? 0.0 : pow( max( dot( R, E ), 0.0 ), Ns );
 
-	frag_out = min(color_amb*val+color_diff*lamb*val+color_spec*spec,vec3(1));
+	// Write output color
+	frag_out = min( color_amb * val + color_diff * lamb * val + color_spec * spec, vec3( 1.0 ) );
 }
 )";
 
