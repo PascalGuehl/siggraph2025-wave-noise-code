@@ -705,8 +705,6 @@ Viewer::Viewer()
 	waveNoise->tZ = 0.0;
 	waveNoise->setVelocity( 0.0 );
 	waveNoise->Ndir = 40;
-	waveNoise->Nc = 40;
-	waveNoise->Na = 0;
 	waveNoise->Orient = 1.0f;
 	waveNoise->Period = 0.0;
 	waveNoise->Zoom = 0.2f;
@@ -720,7 +718,7 @@ Viewer::Viewer()
 	waveNoise->Power = 25.0;
 	waveNoise->old_power = 1.0;
 	waveNoise->contrast = 0.5;
-	waveNoise->Proba = 0.5;
+	waveNoise->setRecursionProbability( 0.5 );
 	waveNoise->setRecursionLevel( 3 );
 	waveNoise->Anisodd = 0.5;
 	
@@ -839,7 +837,6 @@ void Viewer::draw_ogl()
 	waveNoise->Period = 1.0 - waveNoise->Orient;
 	// set_uniform_value(17, Period);
 	set_uniform_value(18, waveNoise->Ndir);
-	// set_uniform_value(20, Na);
 	set_uniform_value( 20, waveNoise->getVelocity() );
 	if ( ! mUseContinuousAnimation )
 	{
@@ -856,7 +853,7 @@ void Viewer::draw_ogl()
 	set_uniform_value( 24, waveNoise->contrast );
 	set_uniform_value( 30, waveNoise->Oper );
 	set_uniform_value( 31, waveNoise->getRecursionLevel() );
-	set_uniform_value( 32, waveNoise->Proba );
+	set_uniform_value( 32, waveNoise->getRecursionProbability() );
 
 	// GPU timer
 	GLuint64 result = 0;
@@ -953,7 +950,11 @@ void Viewer::interface_ogl()
 		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)")) // PG
 		{
 			ImGui::PushItemWidth(sliderWidth);
-			ImGui::SliderFloat("Subdivision Probability", &waveNoise->Proba, 0.0, 1.0);
+			float recursionProbability = waveNoise->getRecursionProbability();
+			if ( ImGui::SliderFloat( "Subdivision Probability", &recursionProbability, 0.0, 1.0 ) )
+			{
+				waveNoise->setRecursionProbability( recursionProbability );
+			}
 			ImGui::SameLine();
 			int recursionLevel = waveNoise->getRecursionLevel();
 			if ( ImGui::SliderInt( "Nb Recursions", &recursionLevel, 1, 5 ) )
@@ -1021,7 +1022,7 @@ bool Viewer::display1DProfileWidget()
 
 		// Display amplitude's energy distribution
 		{
-			const unsigned int MAX_FREQ = waveNoise->MAX_FREQ;
+			const unsigned int MAX_FREQ = waveNoise->getMaximumFrequency();
 			const unsigned int directionIndex = 0;
 			const std::vector< std::vector< double > >& spectralEnergyDistribution = waveNoise->spectralEnergyDistribution;
 			const std::vector< double >& mfs = spectralEnergyDistribution[ directionIndex ];

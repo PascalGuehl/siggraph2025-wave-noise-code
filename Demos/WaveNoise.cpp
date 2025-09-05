@@ -563,6 +563,22 @@ void WaveNoise::setRecursionLevel( int pValue )
 /******************************************************************************
  * ...
  ******************************************************************************/
+float WaveNoise::getRecursionProbability() const
+{
+	return Proba;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setRecursionProbability( float pValue )
+{
+	Proba = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 float WaveNoise::getVelocity() const
 {
 	return tV;
@@ -574,4 +590,13 @@ float WaveNoise::getVelocity() const
 void WaveNoise::setVelocity( float pValue )
 {
 	tV = pValue;
+}
+
+/******************************************************************************
+ * ...
+ * half of half because of FFT symetry and Nyquist
+ ******************************************************************************/
+int WaveNoise::getMaximumFrequency() const
+{
+	return MAX_FREQ;
 }

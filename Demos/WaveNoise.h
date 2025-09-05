@@ -40,8 +40,7 @@ public:
 
     // precision of the pre-computed wave (sampling rate)
     int NARRAY;
-    int MAX_FREQ; // half of half because of FFT symetry and Nyquist
-    int NDIR;			 // 40+50;
+    int NDIR;
 
     int FREQ_LOW;
     int sFREQ_LOW;
@@ -50,9 +49,9 @@ public:
     float Ffreq_low;
     float Ffreq_high;
 
-    int Ndir, Nc, Na, Oper;
+    int Ndir, Oper;
     float tX, tY, tZ;
-    float Orient, Period, Zoom, Time, Ratio, iRatio, Power, old_power, contrast, Proba, Anisodd;
+    float Orient, Period, Zoom, Time, Ratio, iRatio, Power, old_power, contrast, Anisodd;
     int item_current, old_item;
     int complex_current;
 
@@ -100,8 +99,13 @@ public:
     int getRecursionLevel() const;
     void setRecursionLevel( int pValue );
 
+    float getRecursionProbability() const;
+    void setRecursionProbability( float pValue );
+
     float getVelocity() const;
     void setVelocity( float pValue );
+
+    int getMaximumFrequency() const; // half of half because of FFT symetry and Nyquist
 
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
@@ -114,7 +118,11 @@ protected:
     /******************************* ATTRIBUTES *******************************/
 
     int NRec;
+    float Proba;
+
     float tV;
+
+    int MAX_FREQ; // half of half because of FFT symetry and Nyquist
 
     /******************************** METHODS *********************************/
 
