@@ -152,6 +152,7 @@ in mat3 NoMat;
 ////////////////////////////////////////////////////////////////////////////////
 // OUTPUTS
 ////////////////////////////////////////////////////////////////////////////////
+
 out vec3 frag_out;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,11 +183,11 @@ layout( location = 22 ) uniform float RATIO;
 layout( location = 23 ) uniform int QQ;
 layout( location = 24 ) uniform float contrast;
 
-
 layout( location = 30 ) uniform int Operator;
 layout( location = 31 ) uniform int NRec;
 layout( location = 32 ) uniform float Proba;
 
+// 1D wave profile
 layout( binding = 0 ) uniform sampler1D wave;
 layout( binding = 1 ) uniform sampler1D waved;
 
@@ -1088,10 +1089,12 @@ bool Viewer::display1DProfileWidget()
 	ImGui::Begin( "PLANE WAVE##hpn", nullptr, flags );
 	{
 		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "Amplitude (energy distribution)" );
-
-		const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",
-		"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
-		const std::string wave_type = "[" + std::string( items[ waveNoise->item_current ] ) + "]";
+		
+		const char* items[] = { "[noise] gaussian",			   "[noise] white (0dB)",	  "[noise] blue (+3dB)",
+								    "[noise] brown (-6dB)",		   "[non-gaussian] crystal1", "[non-gaussian] web",
+								    "[non-gaussian] marble",	   "[non-gaussian] crystal2", "[non-gaussian] scratches",
+								    "[non-gaussian] smooth cells", "[noise] two ampli levels" };
+		const std::string wave_type = std::string( items[ waveNoise->item_current ] );
 		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), wave_type.c_str() );
 
 		// Display amplitude's energy distribution
