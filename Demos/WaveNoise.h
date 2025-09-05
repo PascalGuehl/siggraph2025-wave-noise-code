@@ -50,8 +50,8 @@ public:
     float Ffreq_low;
     float Ffreq_high;
 
-    int Ndir, Nc, Na, Oper, NRec;
-    float tX, tY, tZ, tV;
+    int Ndir, Nc, Na, Oper;
+    float tX, tY, tZ;
     float Orient, Period, Zoom, Time, Ratio, iRatio, Power, old_power, contrast, Proba, Anisodd;
     int item_current, old_item;
     int complex_current;
@@ -94,6 +94,15 @@ public:
     double* MakeSpatialWaveProfile( int pow_2 );
     void precomputePlanarWaveFromFFT1D( double* A, int N, int pow_2 );
 
+    int getNbOrientations() const;
+    void setNbOrientations( int pValue );
+
+    int getRecursionLevel() const;
+    void setRecursionLevel( int pValue );
+
+    float getVelocity() const;
+    void setVelocity( float pValue );
+
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
      **************************************************************************/
@@ -103,6 +112,9 @@ protected:
     /****************************** INNER TYPES *******************************/
 
     /******************************* ATTRIBUTES *******************************/
+
+    int NRec;
+    float tV;
 
     /******************************** METHODS *********************************/
 

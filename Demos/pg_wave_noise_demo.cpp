@@ -703,7 +703,7 @@ Viewer::Viewer()
 	waveNoise->tX = 0.0;
 	waveNoise->tY = 0.0;
 	waveNoise->tZ = 0.0;
-	waveNoise->tV = 0.0;
+	waveNoise->setVelocity( 0.0 );
 	waveNoise->Ndir = 40;
 	waveNoise->Nc = 40;
 	waveNoise->Na = 0;
@@ -721,7 +721,7 @@ Viewer::Viewer()
 	waveNoise->old_power = 1.0;
 	waveNoise->contrast = 0.5;
 	waveNoise->Proba = 0.5;
-	waveNoise->NRec = 3;
+	waveNoise->setRecursionLevel( 3 );
 	waveNoise->Anisodd = 0.5;
 	
 	// Precompute 1D profile wave(s)
@@ -840,7 +840,7 @@ void Viewer::draw_ogl()
 	// set_uniform_value(17, Period);
 	set_uniform_value(18, waveNoise->Ndir);
 	// set_uniform_value(20, Na);
-	set_uniform_value(20, waveNoise->tV);
+	set_uniform_value( 20, waveNoise->getVelocity() );
 	if ( ! mUseContinuousAnimation )
 	{
 		set_uniform_value( 21, waveNoise->Time );
@@ -849,14 +849,14 @@ void Viewer::draw_ogl()
 	{
 		set_uniform_value( 21, current_time() );
 	}
-	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio);
-	set_uniform_value(22, waveNoise->Ratio);
-	set_uniform_value(19, waveNoise->Zoom * waveNoise->Ratio);
-	set_uniform_value(23, waveNoise->complex_current);
-	set_uniform_value(24, waveNoise->contrast);
-	set_uniform_value(30, waveNoise->Oper);
-	set_uniform_value(31, waveNoise->NRec);
-	set_uniform_value(32, waveNoise->Proba);
+	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio );
+	set_uniform_value( 22, waveNoise->Ratio );
+	set_uniform_value( 19, waveNoise->Zoom * waveNoise->Ratio );
+	set_uniform_value( 23, waveNoise->complex_current );
+	set_uniform_value( 24, waveNoise->contrast );
+	set_uniform_value( 30, waveNoise->Oper );
+	set_uniform_value( 31, waveNoise->getRecursionLevel() );
+	set_uniform_value( 32, waveNoise->Proba );
 
 	// GPU timer
 	GLuint64 result = 0;
@@ -888,39 +888,6 @@ void Viewer::draw_ogl()
  ******************************************************************************/
 void Viewer::interface_ogl()
 {
-	//ImGui::Begin("Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
-	//ImGui::SetWindowSize(ImVec2(600, 500));
-	//ImGui::SetWindowPos(ImVec2(10, 10));
-	////ImGui::Text("FPS: %2.2lf", fps_);
-	//ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
-	//ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
-	//ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
-	//ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
-	//ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
-	//ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
-	//ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
-
-	//// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
-	//ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
-	//ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
-	//ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0/64.0, 1.0);
-	//ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
-	//const char* items[] = { "noise-gaussian",	"noise-white",	 "noise-blue",	  "noise-brown",	   
-	//	"nongauss-crystal1", "nongauss-web", "nongauss-marble", "nongauss-crystal2", "nongauss-scratches", "nongauss-smooth cells", "noise-two ampli levels" };
-	//ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
-	//const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
-	//ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
-	//const char* itemsop[] = { "Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular", "Hyperplan", "Reversed Cellular" };
-	//ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
-	//ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
-	//ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
-	//ImGui::SliderFloat("STIT Probability", &waveNoise->Proba, 0.0, 1.0);
-	//ImGui::SliderInt("STIT Recursions", &waveNoise->NRec, 1, 5);
-
-	//// ImGui::SetWindowSize({ 0, 0 });
-	//ImGui::End();
-
-	//-----------------------------------------------------
 		ImGui::Begin("Wave Noise Gui", nullptr, ImGuiWindowFlags_NoSavedSettings);
 		ImGui::SetWindowSize(ImVec2(560, 525));
 		ImGui::SetWindowPos(ImVec2(10, 10));
@@ -988,7 +955,11 @@ void Viewer::interface_ogl()
 			ImGui::PushItemWidth(sliderWidth);
 			ImGui::SliderFloat("Subdivision Probability", &waveNoise->Proba, 0.0, 1.0);
 			ImGui::SameLine();
-			ImGui::SliderInt("Nb Recursions", &waveNoise->NRec, 1, 5);
+			int recursionLevel = waveNoise->getRecursionLevel();
+			if ( ImGui::SliderInt( "Nb Recursions", &recursionLevel, 1, 5 ) )
+			{
+				waveNoise->setRecursionLevel( recursionLevel );
+			}
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
 		}
 
@@ -999,12 +970,16 @@ void Viewer::interface_ogl()
 			ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
 		}
 
-		if (ImGui::CollapsingHeader("Temporal & Animation Controls")) // PG
+		if ( ImGui::CollapsingHeader( "Temporal & Animation Controls" ) )
 		{
-			ImGui::PushItemWidth(sliderWidth);
-			ImGui::SliderFloat("Speed", &waveNoise->tV, 0.0, 0.1);
+			ImGui::PushItemWidth( sliderWidth );
+			float velocity = waveNoise->getVelocity();
+			if ( ImGui::SliderFloat( "Speed", &velocity, 0.0, 0.1 ) )
+			{
+				waveNoise->setVelocity( velocity );
+			}
 			ImGui::SameLine();
-			ImGui::SliderFloat("Time", &waveNoise->Time, 0.0, 5.0);
+			ImGui::SliderFloat( "Time", &waveNoise->Time, 0.0, 5.0 );
 			ImGui::SameLine();
 			ImGui::Checkbox( "Continuous", &mUseContinuousAnimation );
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
@@ -1012,7 +987,6 @@ void Viewer::interface_ogl()
 
 		// ImGui::SetWindowSize({ 0, 0 });
 		ImGui::End();
-	//-----------------------------------------------------
 
 	// Display wave noise's' 1D profile
 	display1DProfileWidget();
