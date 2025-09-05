@@ -1,15 +1,16 @@
 ﻿/*
- * Multi - Dimensional Procedural Wave Noise - Demos
+ * Publication: Multi-Dimensional Procedural Wave Noise
  *
- * ACM Transactions on Graphics(TOG), Vol. 44, No. 4, Article XXX, August 2025
- *
+ * ACM Transactions on Graphics (TOG), Vol. 44, No. 4, Article 37, August 2025
  * SIGGRAPH 2025, August 2025, Vancouver, Canada
  *
- * Pascal Guehl(1), Rémi Allègre(2), Guillaume Gilet(3), Basile Sauvage(2), Marie - Paule Cani(1), Jean - Michel Dischler(2)
+ * Authors: Pascal Guehl (1), Rémi Allègre (2), Guillaume Gilet (3), Basile Sauvage (2), Marie-Paule Cani (1), Jean-Michel Dischler (2)
  *
  * (1) LIX, Ecole Polytechnique, CNRS, Institut Polytechnique de Paris, France
  * (2) ICube, Université de Strasbourg, CNRS, France
  * (3) Université de Sherbrooke, Canada
+ *
+ * Website: https://pascalguehl.github.io/siggraph2025-wave-noise/
  */
 
 /**
@@ -194,18 +195,18 @@ const float M_PI = 3.14159265358979;
 
 // PRNG (Pseudo-Random Number Generation)
 // - per-thread seed
-uint seed = 1;
+uint prng_seed = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 // FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////
 
 // PRNG (Pseudo-Random Number Generation)
-uint hash( uint x );
-uint hash( uvec2 v );
-void seeding( uint x, uint y, uint z );
-float random();
-float next();
+uint prng_hash( uint x );
+uint prng_hash( uvec2 v );
+void prng_seeding( uint x, uint y, uint z );
+float prng_random();
+float prng_next();
 
 // Wave Noise
 vec2 wavenoise_3D_isotropic( float x, float y, float z );
@@ -216,7 +217,7 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec );
 /******************************************************************************
  * 1D hash function
  ******************************************************************************/
-uint hash( uint x )
+uint prng_hash( uint x )
 {
     x += ( x << 10u );
     x ^= ( x >>  6u );
@@ -229,36 +230,36 @@ uint hash( uint x )
 /******************************************************************************
  * 2D hash function
  ******************************************************************************/
-uint hash( uvec2 v )
+uint prng_hash( uvec2 v )
 {
-	return hash( v.x ^ hash( v.y ) );
+	return prng_hash( v.x ^ prng_hash( v.y ) );
 }
 
 /******************************************************************************
  * Set the seed for a given integer triplet (x,y,z)
 * - all next drawn random numbers will be based on this current seed (for replicability of PRNG)
  ******************************************************************************/
-void seeding( uint x, uint y, uint z )
+void prng_seeding( uint x, uint y, uint z )
 {
-	seed = hash( x + hash( y + hash( z ) ) );
+	prng_seed = prng_hash( x + prng_hash( y + prng_hash( z ) ) );
 }
 
 /******************************************************************************
  * Random value between 0 and 1.0
  ******************************************************************************/
-float random()
+float prng_random()
 {
-	seed = seed * 22695477u + 1u;
-	uint v = seed & 0xffffu;
+	prng_seed = prng_seed * 22695477u + 1u;
+	uint v = prng_seed & 0xffffu;
 	return float( v ) / float( 0xffffu );
 }
 
 /******************************************************************************
  * Random value between -1.0 and 1.0
  ******************************************************************************/
-float next()
+float prng_next()
 {
-	return 2.0 * random() - 1.0;
+	return 2.0 * prng_random() - 1.0;
 }
 
 )"
@@ -284,11 +285,11 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
 		{
 			// Configure per "direction" probabilities
 			// strat angular sector
-			seeding( uint( dir ) * 5u, 2u, 3u );
+			prng_seeding( uint( dir ) * 5u, 2u, 3u );
 			// - configure animation
-			float tspeed = tV * sign( next() ) * time;
+			float tspeed = tV * sign( prng_next() ) * time;
 			// - configure orientation stratified sampling
-			float anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float anbeta = acos( ( float( i ) + prng_random() ) / float( strat ) ); // in [0;Pi/2]
 			float alpha1 = 2.0 * M_PI * float( j ) / float( NF + 1 );
 			float alpha2 = 2.0 * M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
 			float analpha = ( alpha1 + alpha2 ) / 2.0;
@@ -296,7 +297,7 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
 
 			// Slicing
 			// - draw a random orientation (stratified sampling)
-			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
+			float aa =  M_PI / 4.0 * orient + analpha + prng_next() * analphawidth * 0.5;
 			float beta = anbeta + M_PI / 4.0 * orient;
 			// - project the (x,y,z) position on the 1D line
 			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
@@ -306,22 +307,22 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
 			float oid = id - float( iid );
 
 			// Configure per "slice id" along 1D line probabilities (according to direction)
-			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			prng_seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
 			// - jittering along the 1D line
-			float pl = 0.5 + 0.2 * next();
+			float pl = 0.5 + 0.2 * prng_next();
 			// - blending weight between current slice and next slice waves
 			if ( oid < pl - 0.3 ) oid = 0.0;
-			else if (oid > pl + 0.3) oid = 1.0;
+			else if ( oid > pl + 0.3 ) oid = 1.0;
 			else oid = ( oid - pl + 0.3 ) / 0.6;
 
 			// Compute CURRENT (slice) wave (along 1D line, according to direction)
 			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			prng_seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
 			// - draw a random orientation
-			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
-			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			float alpha = ( analpha + prng_next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			float bb = acos( ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
 			// - rotation, scale, then translation of the wave
-			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * prng_next() - tspeed );
 			// - add wave contribution
 			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
 				sum += poids * ( 1.0 - oid ) * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
@@ -329,12 +330,12 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z )
 
 			// Compute NEXT (slice) wave (along 1D line, according to direction)
 			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			prng_seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
 			// - draw a random orientation
-			alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
-			bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			alpha = ( analpha + prng_next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			bb = acos( ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
 			// - rotation, scale, then random translation of the wave
-			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * prng_next() - tspeed );
 			// - add wave contribution
 			if ( dir >= NNmin && dir < NN && dir < NDIR ) {
 				sum += poids * oid * ( 2.0 * texture( wave, fract( dd ) ).xy - vec2( 1.0 ) );
@@ -369,11 +370,11 @@ vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 		for ( int i = 0; i < strat; i++ ) // stratified beta
 		{
 			// Configure per "direction" probabilities
-			seeding( uint( dir ) * 5u, 2u, 3u );
+			prng_seeding( uint( dir ) * 5u, 2u, 3u );
 			// - configure animation
-			float tspeed = tV * sign( next() ) * time;
+			float tspeed = tV * sign( prng_next() ) * time;
 			// - configure orientation stratified sampling
-			float anbeta = acos( 0.25 + anisodd * 0.5 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float anbeta = acos( 0.25 + anisodd * 0.5 * ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) );
 			float alpha1 = ( j < NF ? M_PI / 4.0: 3.0 * M_PI / 4.0 ) + anisodd * M_PI / 8.0 * float( j ) / float( NF + 1 );
 			float alpha2 = ( j < NF ? M_PI / 4.0: 3.0 * M_PI / 4.0 ) + anisodd * M_PI / 8.0 * ( float( j ) + 1.0) / float( NF + 1 );
 			float analpha = ( alpha1 + alpha2 ) / 2.0;
@@ -381,7 +382,7 @@ vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 
 			// Slicing
 			// - draw a random orientation (stratified sampling)
-			float aa =  M_PI / 4.0 + analpha + next() * analphawidth * 0.5;
+			float aa =  M_PI / 4.0 + analpha + prng_next() * analphawidth * 0.5;
 			float beta = anbeta + M_PI / 4.0; 
 			// - project the (x,y,z) position on the 1D line
 			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z;
@@ -391,9 +392,9 @@ vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 			float oid = id - float( iid );
 
 			// Configure per "slice id" along 1D line probabilities (according to direction)
-			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			prng_seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
 			// - jittering along the 1D line
-			float pl = 0.5 + 0.2 * next();
+			float pl = 0.5 + 0.2 * prng_next();
 			// - blending weight between current slice and next slice waves
 			if ( oid < pl - 0.3 ) oid = 0.0;
 			else if ( oid > pl + 0.3 ) oid = 1.0;
@@ -401,12 +402,12 @@ vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 
 			// Compute CURRENT (slice) wave (along 1D line, according to direction)
 			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			prng_seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
 			// - draw a random orientation
-			float alpha = ( analpha + next() * analphawidth );
-			float bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float alpha = ( analpha + prng_next() * analphawidth );
+			float bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) );
 			// - rotation, scale, then translation of the wave
-			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			float dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * prng_next() - tspeed );
 			// - add wave contribution
 			if ( dir >= NNmin && dir < NN && dir < NDIR )
 			{
@@ -415,12 +416,12 @@ vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd )
 
 			// Compute NEXT (slice) wave (along 1D line, according to direction)
 			// - configure per "wave" probabilities
-			seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			prng_seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
 			// - draw a random orientation
-			alpha = ( analpha + next() * analphawidth );
-			bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			alpha = ( analpha + prng_next() * analphawidth );
+			bb = acos( 0.5 + 0.1 * ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) );
 			// - rotation, scale, then random translation of the wave
-			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * next() - tspeed );
+			dd = ( 1.0 / RATIO * ( sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z ) + 2.0 * prng_next() - tspeed );
 			// - add wave contribution
 			if ( dir >= NNmin && dir < NN && dir < NDIR )
 			{
@@ -453,11 +454,11 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 		for ( int i = 0; i < strat; i++ ) // stratified beta
 		{
 			// Configure per "direction" probabilities
-			seeding( uint( dir ) * 5u, 2u, 3u + rec );
+			prng_seeding( uint( dir ) * 5u, 2u, 3u + rec );
 			// - configure animation
-			float tspeed = tV * sign( next() ) * time;
+			float tspeed = tV * sign( prng_next() ) * time;
 			// - configure orientation stratified sampling
-			float anbeta = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) );
+			float anbeta = acos( ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) );
 			float alpha1 = M_PI * float( j ) / float( NF + 1 );
 			float alpha2 = M_PI * ( float( j ) + 1.0 ) / float( NF + 1 );
 			float analpha = ( alpha1 + alpha2 ) / 2.0;
@@ -465,7 +466,7 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 
 			// Slicing
 			// - draw a random orientation (stratified sampling)
-			float aa =  M_PI / 4.0 * orient + analpha + next() * analphawidth * 0.5;
+			float aa =  M_PI / 4.0 * orient + analpha + prng_next() * analphawidth * 0.5;
 			float beta = anbeta + M_PI / 4.0 * orient;
 			// - project the (x,y,z) position on the 1D line
 			float id = sin( beta ) * cos( aa ) * x + sin( beta ) * sin( aa ) * y + cos( beta ) * z  + 5.0 + tspeed;
@@ -475,9 +476,9 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 			float oid = id - float( iid );
 
 			// Configure per "slice id" along 1D line probabilities (according to direction)
-			seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
+			prng_seeding( uint( 7 * dir ), uint( 4 * iid ), 4u );
 			// - jittering along the 1D line
-			float pl = 0.5 + 0.3 * next();
+			float pl = 0.5 + 0.3 * prng_next();
 			// - determine closest cell border between current, previous and next cells, along the 1D line (dist min)
 			if ( oid <= pl )
 			{
@@ -485,8 +486,8 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 				float dist1 = pl - oid;
 				rvalue = min( dist1, rvalue );
 				// previous cell
-				seeding( uint( 7 * dir ), uint( 4 * ( iid - 1 ) ), 4u );
-				float pl2 = 0.5 + 0.3 * next();
+				prng_seeding( uint( 7 * dir ), uint( 4 * ( iid - 1 ) ), 4u );
+				float pl2 = 0.5 + 0.3 * prng_next();
 				float dist2 = oid + 1.0 - pl2;
 				rvalue = min( dist2, rvalue );
 			}
@@ -496,8 +497,8 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 				float dist1 = oid - pl;
 				rvalue = min( dist1, rvalue );
 				// next cell
-				seeding( uint( 7 * dir ), uint( 4 * ( iid + 1 ) ), 4u );
-				float pl2 = 0.5 + 0.3 * next();
+				prng_seeding( uint( 7 * dir ), uint( 4 * ( iid + 1 ) ), 4u );
+				float pl2 = 0.5 + 0.3 * prng_next();
 				float dist2 = 1.0 - oid + pl2;
 				rvalue = min( dist2, rvalue );
 			}
@@ -507,20 +508,20 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 			resv = resv * 2u;
 
 			// Orthogonal tesselation (to current 1D line) to create regular cellular patterns
-			if ( oid <= pl ) seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
-			else seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
+			if ( oid <= pl ) prng_seeding( uint( 4 * dir ), uint( 4 * iid ), 0 );
+			else prng_seeding( uint( 4 * dir ), uint( 4 * ( iid + 1 ) ), 0 );
 			// - draw a random orthogonal orientation (stratified sampling in a cone)
-			float alpha = ( analpha + next() * analphawidth ) * orient + aa * ( 1.0 - orient );
-			float bb = acos( ( float( i ) + ( 0.5 * next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
+			float alpha = ( analpha + prng_next() * analphawidth ) * orient + aa * ( 1.0 - orient );
+			float bb = acos( ( float( i ) + ( 0.5 * prng_next() + 0.5 ) ) / float( strat ) ) * orient + beta * ( 1.0 - orient );
 			// - project the (x,y) position on the 1D line
 			float dd = sin( bb ) * cos( alpha ) * x + sin( bb ) * sin( alpha ) * y + cos( bb ) * z + 5.0 + tspeed;
 			// - interger part (slice id)
 			int p = ( dd > 0.0 ? int( dd ) : int( dd ) - 1 ); //FASTFLOOR( dd );
 			// - fractional part (position inside the slice)
 			dd = dd - float( p);
-			seeding( uint( 7 * dir ), uint( 4 * p ), 4u );
+			prng_seeding( uint( 7 * dir ), uint( 4 * p ), 4u );
 			// - jittering along the 1D line
-			pl = 0.5 + 0.3 * next();
+			pl = 0.5 + 0.3 * prng_next();
 			// - determine in which we are, current or previous cell, along the 1D line (dist min)
 			if ( dd <= pl )
 			{
@@ -528,8 +529,8 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 				float dist1 = pl - dd;
 				rvalue = min( dist1, rvalue );
 				// previous cell
-				seeding( uint( 7 * dir ), uint( 4 * ( p - 1 ) ), 4u );
-				float pl2 = 0.5 + 0.3 * next();
+				prng_seeding( uint( 7 * dir ), uint( 4 * ( p - 1 ) ), 4u );
+				float pl2 = 0.5 + 0.3 * prng_next();
 				float dist2 = dd + 1.0 - pl2;
 				rvalue = min( dist2, rvalue );
 			}
@@ -539,8 +540,8 @@ vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec )
 				float dist1 = dd - pl;
 				rvalue = min( dist1, rvalue );
 				// next cell
-				seeding( uint( 7 * dir ), uint( 4 * ( p + 1 ) ), 4u );
-				float pl2 = 0.5 + 0.3 * next();
+				prng_seeding( uint( 7 * dir ), uint( 4 * ( p + 1 ) ), 4u );
+				float pl2 = 0.5 + 0.3 * prng_next();
 				float dist2 = 1.0 - dd + pl2;
 				rvalue = min( dist2, rvalue );
 			}
@@ -573,8 +574,8 @@ vec2 wavenoise_3D_cellular( float x, float y, float z )
 	for ( rr = 1; rr < NRec && cont; rr++ )
 	{
 		uint cellident = uint( 255.0 * ( res.x + 1.0 ) * 0.5 );
-		seeding( cellident, uint( rr ), 3 );
-		if ( 0.5 * ( next() + 1.0 ) < Proba )
+		prng_seeding( cellident, uint( rr ), 3 );
+		if ( 0.5 * ( prng_next() + 1.0 ) < Proba )
 		{
 			vec2 res2 = wavenoise_3D_cellular_recursive( x, y, z, uint( rr ) );
 
@@ -586,32 +587,55 @@ vec2 wavenoise_3D_cellular( float x, float y, float z )
 	return res;
 }
 
+/******************************************************************************
+ * Computes multi-dimensional procedural wave noise
+ ******************************************************************************/
+vec2 wavenoise_3D( vec3 p )
+{
+	vec2 noise = vec2( 0.0 );
+    
+	if ( Operator == 0 )
+	{
+		noise = wavenoise_3D_isotropic( p.x, p.y, p.z );
+	}
+	else if ( Operator == 1 )
+	{
+		noise = wavenoise_3D_anisotropic( p.x, p.y, p.z, 1 );
+	}
+	else if ( Operator == 2 )
+	{
+		noise = wavenoise_3D_anisotropic( p.x, p.y, p.z, 2 );
+	}
+	else
+	{
+		noise = wavenoise_3D_cellular( 0.1 * p.x, 0.1 * p.y, 0.1 * p.z );
+	}
+
+	return noise;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // MAIN PROGRAM
 ////////////////////////////////////////////////////////////////////////////////
 void main()
 {
 	// Noise computation
-	vec2 waven = vec2( 0.0 );
-    vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
-	if ( Operator == 0 ) waven = wavenoise_3D_isotropic( Xpos.x, Xpos.y, Xpos.z );
-	else if ( Operator == 1 ) waven = wavenoise_3D_anisotropic( Xpos.x, Xpos.y, Xpos.z, 1 );
-	else if ( Operator == 2 ) waven = wavenoise_3D_anisotropic( Xpos.x, Xpos.y, Xpos.z, 2 );
-	else waven = wavenoise_3D_cellular( 0.1 * Xpos.x, 0.1 * Xpos.y, 0.1 * Xpos.z );
+	vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
+	vec2 noise = wavenoise_3D( Xpos );
 
 	// Noise post-processing
 	float val = 0.0;
 	if ( Operator <= 2 ) { 
-		if ( QQ == 0 ) val = clamp( ( contrast * waven.x + 0.5 ), 0.0, 1.0 );
-		else if ( QQ == 1 ) val = clamp( ( contrast * waven.y + 0.5 ), 0.0, 1.0 );
-		else if ( QQ == 2 ) val = clamp( length( waven ) * 2.0 * contrast, 0.0, 1.0 );
-		else val = atan( waven.y, waven.x ) / M_PI + 0.5; //smoothstep( -1.0, 1.0, cos( atan( waven.y, waven.x ) ) ); 
+		if ( QQ == 0 ) val = clamp( ( contrast * noise.x + 0.5 ), 0.0, 1.0 );
+		else if ( QQ == 1 ) val = clamp( ( contrast * noise.y + 0.5 ), 0.0, 1.0 );
+		else if ( QQ == 2 ) val = clamp( length( noise ) * 2.0 * contrast, 0.0, 1.0 );
+		else val = atan( noise.y, noise.x ) / M_PI + 0.5; //smoothstep( -1.0, 1.0, cos( atan( noise.y, noise.x ) ) ); 
 	}
 	else {
-		if ( Operator == 3 ) val = clamp( ( 0.5 * waven.x + 0.5 ), 0.0, 1.0 );
-		else if ( Operator == 4 ) val = 0.8 * pow( clamp( ( 0.5 * waven.y + 0.5 ), 0.0, 1.0 ), contrast ) + 0.2;
-		else if ( Operator == 5 ) val = step( 0.05, 0.5 * waven.y + 0.5 );
-		else val = 1.0 - pow( clamp( ( 0.5 * waven.y + 0.5 ), 0.0, 1.0 ), contrast );
+		if ( Operator == 3 ) val = clamp( ( 0.5 * noise.x + 0.5 ), 0.0, 1.0 );
+		else if ( Operator == 4 ) val = 0.8 * pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast ) + 0.2;
+		else if ( Operator == 5 ) val = step( 0.05, 0.5 * noise.y + 0.5 );
+		else val = 1.0 - pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast );
 	}
 
 	// Shading (ADS: ambient, diffuse, specular)
@@ -934,15 +958,15 @@ void Viewer::interface_ogl()
 
 		if (ImGui::CollapsingHeader("Waveforms & Noise Types")) // PG
 		{
-			const char* items[] = { "noise-gaussian",		"noise-white",			 "noise-blue",
-								   "noise-brown",			"nongauss-crystal1",	 "nongauss-web",
-								   "nongauss-marble",		"nongauss-crystal2",	 "nongauss-scratches",
-								   "nongauss-smooth cells", "noise-two ampli levels" };
+			const char* items[] = { "[noise] gaussian",		"[noise] white (0dB)",		"[noise] blue (+3dB)",
+								   "[noise] brown (-6dB)",	"[non-gaussian] crystal1",		"[non-gaussian] web",
+								   "[non-gaussian] marble",	"[non-gaussian] crystal2",	"[non-gaussian] scratches",
+								   "[non-gaussian] smooth cells", "[noise] two ampli levels" };
 			ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
 
 			const char* itemsop[] = {
-				"Isotropic Sum", "Aniso Sum - one direction", "Aniso Sum - two directions", "Random polytopes", "Cellular",
-				"Hyperplan",	 "Reversed Cellular" };
+				"[isotropic] Sum", "[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions", "[cellular] Random polytopes", "[cellular] Cellular",
+				"[cellular] Hyperplan",	 "[cellular] Reversed Cellular" };
 			ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
 			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
 		}
