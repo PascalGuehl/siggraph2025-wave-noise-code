@@ -26,6 +26,13 @@
 namespace Wn
 {
 
+ /**
+  * @class WaveNoise
+  *
+  * @brief The WaveNoise class provides interface to multi-dimensional procedural wave noise.
+  *
+  * Multi-dimensional procedural wave noise.
+  */
 class WaveNoise
 {
     /**************************************************************************
@@ -51,7 +58,8 @@ public:
 
     int Ndir, Oper;
     float tX, tY, tZ;
-    float Orient, Period, Zoom, Time, Ratio, iRatio, Power, old_power, contrast, Anisodd;
+    float Orient, Zoom, Ratio, iRatio, Power, old_power, contrast, Anisodd;
+
     int item_current, old_item;
     int complex_current;
 
@@ -98,12 +106,15 @@ public:
 
     int getRecursionLevel() const;
     void setRecursionLevel( int pValue );
-
+    
     float getRecursionProbability() const;
     void setRecursionProbability( float pValue );
 
     float getVelocity() const;
     void setVelocity( float pValue );
+    
+    float getTime() const;
+    void setTime( float pValue );
 
     int getMaximumFrequency() const; // half of half because of FFT symetry and Nyquist
 
@@ -117,11 +128,29 @@ protected:
 
     /******************************* ATTRIBUTES *******************************/
 
+    /**
+     * Maximum recursion level for cellular noise
+     */
     int NRec;
+
+    /**
+     * Recursion probability for cellular noise
+     */
     float Proba;
 
+    /**
+     * Wave maximum velocity
+     */
     float tV;
 
+    /**
+     * Time
+     */
+    float Time;
+
+    /**
+     * Maximum 1D profile frequency
+     */
     int MAX_FREQ; // half of half because of FFT symetry and Nyquist
 
     /******************************** METHODS *********************************/

@@ -163,19 +163,25 @@ layout( location = 11 ) uniform vec3 color_amb;
 layout( location = 12 ) uniform vec3 color_spec;
 layout( location = 13 ) uniform float Ns;
 layout( location = 14 ) uniform vec3 light_pos;
+
 layout( location = 15 ) uniform int NDIR;
+layout( location = 18 ) uniform int NN;
+
 layout( location = 16 ) uniform float anisodd;
 
-layout( location = 18 ) uniform int NN;
 layout( location = 19 ) uniform float zoom;
-layout( location = 20 ) uniform float tV;
-layout( location = 21 ) uniform float time;
-layout( location = 22 ) uniform float RATIO;
-layout( location = 23 ) uniform int QQ;
-layout( location = 24 ) uniform float contrast;
 layout( location = 25 ) uniform float tX;
 layout( location = 26 ) uniform float tY;
 layout( location = 27 ) uniform float tZ;
+
+layout( location = 20 ) uniform float tV;
+layout( location = 21 ) uniform float time;
+
+layout( location = 22 ) uniform float RATIO;
+
+layout( location = 23 ) uniform int QQ;
+layout( location = 24 ) uniform float contrast;
+
 
 layout( location = 30 ) uniform int Operator;
 layout( location = 31 ) uniform int NRec;
@@ -614,6 +620,55 @@ vec2 wavenoise_3D( vec3 p )
 	return noise;
 }
 
+/******************************************************************************
+ * Post-process multi-dimensional procedural wave noise
+ ******************************************************************************/
+float wavenoise_3D_postprocess( vec2 noise )
+{
+	float noise_value = 0.0;
+    
+	if ( Operator <= 2 ) // non-cellular noise
+	{ 
+		if ( QQ == 0 ) // real part
+		{
+			noise_value = clamp( ( contrast * noise.x + 0.5 ), 0.0, 1.0 );
+		}
+		else if ( QQ == 1 ) // imaginary part
+		{
+			noise_value = clamp( ( contrast * noise.y + 0.5 ), 0.0, 1.0 );
+		}
+		else if ( QQ == 2 ) // modulus
+		{
+			noise_value = clamp( length( noise ) * 2.0 * contrast, 0.0, 1.0 );
+		}
+		else // phase
+		{
+			noise_value = atan( noise.y, noise.x ) / M_PI + 0.5; //smoothstep( -1.0, 1.0, cos( atan( noise.y, noise.x ) ) );
+		}
+	}
+	else // cellular noise
+	{
+		if ( Operator == 3 )
+		{
+			noise_value = clamp( ( 0.5 * noise.x + 0.5 ), 0.0, 1.0 );
+		}
+		else if ( Operator == 4 )
+		{
+			noise_value = 0.8 * pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast ) + 0.2;
+		}
+		else if ( Operator == 5 )
+		{
+			noise_value = step( 0.05, 0.5 * noise.y + 0.5 );
+		}
+		else
+		{
+			noise_value = 1.0 - pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast );
+		}
+	}
+
+	return noise_value;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // MAIN PROGRAM
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,19 +679,7 @@ void main()
 	vec2 noise = wavenoise_3D( Xpos );
 
 	// Noise post-processing
-	float val = 0.0;
-	if ( Operator <= 2 ) { 
-		if ( QQ == 0 ) val = clamp( ( contrast * noise.x + 0.5 ), 0.0, 1.0 );
-		else if ( QQ == 1 ) val = clamp( ( contrast * noise.y + 0.5 ), 0.0, 1.0 );
-		else if ( QQ == 2 ) val = clamp( length( noise ) * 2.0 * contrast, 0.0, 1.0 );
-		else val = atan( noise.y, noise.x ) / M_PI + 0.5; //smoothstep( -1.0, 1.0, cos( atan( noise.y, noise.x ) ) ); 
-	}
-	else {
-		if ( Operator == 3 ) val = clamp( ( 0.5 * noise.x + 0.5 ), 0.0, 1.0 );
-		else if ( Operator == 4 ) val = 0.8 * pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast ) + 0.2;
-		else if ( Operator == 5 ) val = step( 0.05, 0.5 * noise.y + 0.5 );
-		else val = 1.0 - pow( clamp( ( 0.5 * noise.y + 0.5 ), 0.0, 1.0 ), contrast );
-	}
+	float noise_value = wavenoise_3D_postprocess( noise );
 
 	// Shading (ADS: ambient, diffuse, specular)
 	vec3 Nco = normalize( NCo );
@@ -652,7 +695,7 @@ void main()
 	float spec = Ns == 0.0 ? 0.0 : pow( max( dot( R, E ), 0.0 ), Ns );
 
 	// Write output color
-	frag_out = min( color_amb * val + color_diff * lamb * val + color_spec * spec, vec3( 1.0 ) );
+	frag_out = min( color_amb * noise_value + color_diff * lamb * noise_value + color_spec * spec, vec3( 1.0 ) );
 }
 )";
 
@@ -730,9 +773,8 @@ Viewer::Viewer()
 	waveNoise->setVelocity( 0.0 );
 	waveNoise->Ndir = 40;
 	waveNoise->Orient = 1.0f;
-	waveNoise->Period = 0.0;
 	waveNoise->Zoom = 0.2f;
-	waveNoise->Time = 0.0f;
+	waveNoise->setTime( 0.0f );
 	waveNoise->item_current = 0; // Gaussian
 	waveNoise->Oper = 0;		 // Isowave
 	waveNoise->old_item = 0;
@@ -844,38 +886,42 @@ void Viewer::draw_ogl()
 			waveNoise->createIsotropicProceduralEnergyDistri();
 			waveNoise->precomputePlanarWave( 4.0 );
 		}
-		tex->alloc(waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data());
-		texd->alloc(waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data());
+		tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
+		texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 	}
-	set_uniform_value(1, proj);
-	set_uniform_value(2, mv);
-	set_uniform_value(3, Transfo::inverse_transpose(mv));
 
-	set_uniform_value(14, GLVec3(0, 2.0, 3.0));
+	set_uniform_value( 1, proj );
+	set_uniform_value( 2, mv );
+	set_uniform_value( 3, Transfo::inverse_transpose( mv ) );
 
-	set_uniform_value(25, waveNoise->tX+5.0);
-	set_uniform_value(26, waveNoise->tY+5.0);
-	set_uniform_value(27, waveNoise->tZ+5.0);
-	set_uniform_value(15, waveNoise->Ndir);
-	set_uniform_value(16, waveNoise->Anisodd);
-	waveNoise->Period = 1.0 - waveNoise->Orient;
-	// set_uniform_value(17, Period);
-	set_uniform_value(18, waveNoise->Ndir);
+	set_uniform_value( 14, GLVec3( 0, 2.0, 3.0 ) ); // light position
+
+	set_uniform_value( 25, waveNoise->tX + 5.0 );
+	set_uniform_value( 26, waveNoise->tY + 5.0 );
+	set_uniform_value( 27, waveNoise->tZ + 5.0 );
+
+	set_uniform_value( 15, waveNoise->Ndir );
+	set_uniform_value( 16, waveNoise->Anisodd );
+	
+	set_uniform_value( 18, waveNoise->Ndir );
+
 	set_uniform_value( 20, waveNoise->getVelocity() );
 	if ( ! mUseContinuousAnimation )
 	{
-		set_uniform_value( 21, waveNoise->Time );
+		set_uniform_value( 21, waveNoise->getTime() );
 	}
 	else
 	{
 		set_uniform_value( 21, current_time() );
 	}
+
 	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio );
 	set_uniform_value( 22, waveNoise->Ratio );
 	set_uniform_value( 19, waveNoise->Zoom * waveNoise->Ratio );
 	set_uniform_value( 23, waveNoise->complex_current );
 	set_uniform_value( 24, waveNoise->contrast );
 	set_uniform_value( 30, waveNoise->Oper );
+
 	set_uniform_value( 31, waveNoise->getRecursionLevel() );
 	set_uniform_value( 32, waveNoise->getRecursionProbability() );
 
@@ -883,15 +929,15 @@ void Viewer::draw_ogl()
 	GLuint64 result = 0;
 	mGPUTimeElapsed = 0;
 
-	for (int i = 0; i < renderer_p.size(); i++)
+	for ( int i = 0; i < renderer_p.size(); i++ )
 	{
-		auto mat = renderer_p[i]->material();
+		auto mat = renderer_p[ i ]->material();
 
-		set_uniform_value(10, mat->Kd);
-		set_uniform_value(11, mat->Ka);
-		set_uniform_value(12, mat->Ks);
-		set_uniform_value(13, mat->Ns);
-		set_uniform_value("light_pos", GLVec3(0, 2, 2.5));
+		set_uniform_value( 10, mat->Kd );
+		set_uniform_value( 11, mat->Ka );
+		set_uniform_value( 12, mat->Ks );
+		set_uniform_value( 13, mat->Ns );
+		set_uniform_value( "light_pos", GLVec3( 0, 2, 2.5 ) );
 
 		glBeginQuery( GL_TIME_ELAPSED, mQueryTimeElapsed );
 
@@ -914,7 +960,7 @@ void Viewer::interface_ogl()
 		ImGui::SetWindowPos(ImVec2(10, 10));
 		// ImGui::Text("FPS: %2.2lf", fps_);
 
-		const float sliderWidth = 100.0f; // largeur personnalis�e pour chaque slider
+		const float sliderWidth = 100.0f; // largeur personnalisee pour chaque slider
 		if (ImGui::CollapsingHeader("Spatial Transformation"))
 		{
 			ImGui::PushItemWidth(sliderWidth);
@@ -923,14 +969,14 @@ void Viewer::interface_ogl()
 			ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
 			ImGui::SameLine();
 			ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
-			ImGui::PopItemWidth(); // remet la largeur par d�faut
+			ImGui::PopItemWidth(); // remet la largeur par defaut
 
 			ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
 		}
 	
 		// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
 
-		if (ImGui::CollapsingHeader("Spectral Configuration")) // PG
+		if (ImGui::CollapsingHeader("Spectral Configuration"))
 		{
 			//ImGui::Text("Quality vs.Framerate");
 			if (ImGui::TreeNode("Quality vs. Framerate"))
@@ -956,12 +1002,12 @@ void Viewer::interface_ogl()
 			}
 		}
 
-		if (ImGui::CollapsingHeader("Waveforms & Noise Types")) // PG
+		if (ImGui::CollapsingHeader("Waveforms & Noise Types"))
 		{
-			const char* items[] = { "[noise] gaussian",		"[noise] white (0dB)",		"[noise] blue (+3dB)",
-								   "[noise] brown (-6dB)",	"[non-gaussian] crystal1",		"[non-gaussian] web",
-								   "[non-gaussian] marble",	"[non-gaussian] crystal2",	"[non-gaussian] scratches",
-								   "[non-gaussian] smooth cells", "[noise] two ampli levels" };
+			const char* items[] = { "[noise] gaussian",			   "[noise] white (0dB)",	  "[noise] blue (+3dB)",
+								    "[noise] brown (-6dB)",		   "[non-gaussian] crystal1", "[non-gaussian] web",
+								    "[non-gaussian] marble",	   "[non-gaussian] crystal2", "[non-gaussian] scratches",
+								    "[non-gaussian] smooth cells", "[noise] two ampli levels" };
 			ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
 
 			const char* itemsop[] = {
@@ -971,7 +1017,7 @@ void Viewer::interface_ogl()
 			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
 		}
 
-		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)")) // PG
+		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)"))
 		{
 			ImGui::PushItemWidth(sliderWidth);
 			float recursionProbability = waveNoise->getRecursionProbability();
@@ -988,7 +1034,7 @@ void Viewer::interface_ogl()
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
 		}
 
-		if (ImGui::CollapsingHeader("Post-Processing & Display")) // PG
+		if (ImGui::CollapsingHeader("Post-Processing & Display"))
 		{
 			const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
 			ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
@@ -1004,7 +1050,11 @@ void Viewer::interface_ogl()
 				waveNoise->setVelocity( velocity );
 			}
 			ImGui::SameLine();
-			ImGui::SliderFloat( "Time", &waveNoise->Time, 0.0, 5.0 );
+			float time = waveNoise->getTime();
+			if( ImGui::SliderFloat( "Time", &time, 0.0, 5.0 ) )
+			{
+				waveNoise->setTime( time );
+			}
 			ImGui::SameLine();
 			ImGui::Checkbox( "Continuous", &mUseContinuousAnimation );
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
