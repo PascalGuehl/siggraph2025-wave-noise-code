@@ -220,6 +220,8 @@ vec2 wavenoise_3D_isotropic( float x, float y, float z );
 vec2 wavenoise_3D_anisotropic( float x, float y, float z, int nd );
 vec2 wavenoise_3D_cellular( float x, float y, float z );
 vec2 wavenoise_3D_cellular_recursive( float x, float y, float z, uint rec );
+float wavenoise_3D_postprocess( vec2 noise );
+vec2 wavenoise_3D( vec3 p );
 
 /******************************************************************************
  * 1D hash function
