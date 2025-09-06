@@ -16,6 +16,13 @@
 #ifndef _WN_WAVE_NOISE_H_
 #define _WN_WAVE_NOISE_H_
 
+/******************************************************************************
+ ******************************* INCLUDE SECTION ******************************
+ ******************************************************************************/
+
+ // EasyCppOGL
+#include <gl_eigen.h>
+
 // STL
 #include <vector>
 
@@ -57,7 +64,6 @@ public:
     float Ffreq_high;
 
     int Ndir, Oper;
-    float tX, tY, tZ;
     float Orient, Zoom, Ratio, iRatio, Power, old_power, contrast, Anisodd;
 
     int item_current, old_item;
@@ -118,6 +124,9 @@ public:
 
     int getMaximumFrequency() const; // half of half because of FFT symetry and Nyquist
 
+    const EZCOGL::GLVec3& getTranslation() const;
+    void setTranslation( const EZCOGL::GLVec3& pT );
+
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
      **************************************************************************/
@@ -152,6 +161,11 @@ protected:
      * Maximum 1D profile frequency
      */
     int MAX_FREQ; // half of half because of FFT symetry and Nyquist
+
+    /**
+     * Translation
+     */
+    EZCOGL::GLVec3 mTranslation;
 
     /******************************** METHODS *********************************/
 

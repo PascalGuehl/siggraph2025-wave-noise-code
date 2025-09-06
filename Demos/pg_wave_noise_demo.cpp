@@ -171,9 +171,7 @@ layout( location = 18 ) uniform int NN;
 layout( location = 16 ) uniform float anisodd;
 
 layout( location = 19 ) uniform float zoom;
-layout( location = 25 ) uniform float tX;
-layout( location = 26 ) uniform float tY;
-layout( location = 27 ) uniform float tZ;
+layout( location = 25 ) uniform vec3 tX;
 
 layout( location = 20 ) uniform float tV;
 layout( location = 21 ) uniform float time;
@@ -678,7 +676,7 @@ float wavenoise_3D_postprocess( vec2 noise )
 void main()
 {
 	// Noise computation
-	vec3 Xpos = vec3( zoom * Co.x + tX, zoom * Co.y + tY, zoom * Co.z + tZ );
+	vec3 Xpos = vec3( zoom * Co.x + tX.x, zoom * Co.y + tX.y, zoom * Co.z + tX.z );
 	vec2 noise = wavenoise_3D( Xpos );
 
 	// Noise post-processing
@@ -770,9 +768,7 @@ Viewer::Viewer()
 	waveNoise->initialize();
 
 	// Dafault parameters value
-	waveNoise->tX = 0.0;
-	waveNoise->tY = 0.0;
-	waveNoise->tZ = 0.0;
+	waveNoise->setTranslation( GLVec3( 0.f, 0.f, 0.f ) );
 	waveNoise->setVelocity( 0.0 );
 	waveNoise->Ndir = 40;
 	waveNoise->Orient = 1.0f;
@@ -816,7 +812,7 @@ void Viewer::init_ogl()
 	// Load OBJ file mesh
 	auto mesh = Mesh::load(DATA_PATH + "/models/manual_cutaway_cube.obj");
 
-	nbMeshParts = mesh.size();
+	nbMeshParts = static_cast< int >( mesh.size() );
 	// set the renderer and the materials for all the meshes parts
 	for (int i = 0; i < nbMeshParts; ++i)
 	{
@@ -843,43 +839,32 @@ void Viewer::init_ogl()
  ******************************************************************************/
 void Viewer::draw_ogl()
 {
-	GLMat4 sc = Transfo::scale(2.5);
-	GLMat4 rotx = Transfo::rotateX(-60.0);
-	GLMat4 rotz = Transfo::rotateZ(25.0);
-	const GLMat4& proj = this->get_projection_matrix();
-	const GLMat4& mv = this->get_view_matrix() * sc * rotx * rotz;
-
-	glEnable(GL_DEPTH_TEST);
-	glClearColor(1.0, 1.0, 1.0, 0.0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glEnable( GL_DEPTH_TEST );
+	glClearColor( 1.0, 1.0, 1.0, 0.0 );
+	glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT );
 
 	waveNoise->FREQ_LOW = (int)(waveNoise->Ffreq_low * 64.0);
 	waveNoise->FREQ_HIGH = (int)(waveNoise->Ffreq_high * 64.0);
-	prg_p->bind();
 
-	// Bind textures
-	// - precomputed 1D wave profile
-	tex->bind( 0 );
-	// - precomputed 1D wave gradient
-	texd->bind( 1 );
-
-	if (waveNoise->FREQ_LOW != waveNoise->sFREQ_LOW || waveNoise->FREQ_HIGH != waveNoise->sFREQ_HIGH || waveNoise->item_current != waveNoise->old_item ||
-		(waveNoise->item_current >= 4 && waveNoise->old_power != waveNoise->Power))
+	if ( waveNoise->FREQ_LOW != waveNoise->sFREQ_LOW ||
+		 waveNoise->FREQ_HIGH != waveNoise->sFREQ_HIGH ||
+		 waveNoise->item_current != waveNoise->old_item ||
+		( waveNoise->item_current >= 4 && waveNoise->old_power != waveNoise->Power ) )
 	{
 		waveNoise->sFREQ_LOW = waveNoise->FREQ_LOW;
 		waveNoise->sFREQ_HIGH = waveNoise->FREQ_HIGH;
 		waveNoise->old_item = waveNoise->item_current;
 		waveNoise->old_power = waveNoise->Power;
-		if (waveNoise->item_current >= 4 && waveNoise->item_current <= 9)
+		if ( waveNoise->item_current >= 4 && waveNoise->item_current <= 9 )
 		{
 			int pow_2 = 1, N = 1;
-			while (N < waveNoise->NARRAY)
+			while ( N < waveNoise->NARRAY )
 			{
 				pow_2++;
 				N *= 2;
 			}
 			pow_2--;
-			printf("NARRAY=%d, N=%d, pow2=%d\n", waveNoise->NARRAY, N, pow_2);
+			printf( "NARRAY=%d, N=%d, pow2=%d\n", waveNoise->NARRAY, N, pow_2 );
 			double* A = waveNoise->MakeSpatialWaveProfile( pow_2 );
 			waveNoise->precomputePlanarWaveFromFFT1D( A, N, pow_2 );
 			delete A;
@@ -893,16 +878,29 @@ void Viewer::draw_ogl()
 		texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 	}
 
+	prg_p->bind();
+
+	// Bind textures
+	// - precomputed 1D wave profile
+	tex->bind( 0 );
+	// - precomputed 1D wave gradient
+	texd->bind( 1 );
+
+	// Model-View-Projection transforms
+	GLMat4 sc = Transfo::scale( 2.5 );
+	GLMat4 rotx = Transfo::rotateX( -60.0 );
+	GLMat4 rotz = Transfo::rotateZ( 25.0 );
+	const GLMat4& proj = this->get_projection_matrix();
+	const GLMat4& mv = this->get_view_matrix() * sc * rotx * rotz;
 	set_uniform_value( 1, proj );
 	set_uniform_value( 2, mv );
 	set_uniform_value( 3, Transfo::inverse_transpose( mv ) );
 
 	set_uniform_value( 14, GLVec3( 0, 2.0, 3.0 ) ); // light position
 
-	set_uniform_value( 25, waveNoise->tX + 5.0 );
-	set_uniform_value( 26, waveNoise->tY + 5.0 );
-	set_uniform_value( 27, waveNoise->tZ + 5.0 );
-
+	GLVec3 translation = waveNoise->getTranslation() + GLVec3( 5.f, 5.f, 5.f );
+	set_uniform_value( 25, translation );
+	
 	set_uniform_value( 15, waveNoise->Ndir );
 	set_uniform_value( 16, waveNoise->Anisodd );
 	
@@ -942,8 +940,10 @@ void Viewer::draw_ogl()
 		set_uniform_value( 13, mat->Ns );
 		set_uniform_value( "light_pos", GLVec3( 0, 2, 2.5 ) );
 
+		// GPU timer
 		glBeginQuery( GL_TIME_ELAPSED, mQueryTimeElapsed );
 
+		// Render
 		renderer_p[ i ]->draw( GL_TRIANGLES );
 
 		// GPU timer
@@ -966,15 +966,21 @@ void Viewer::interface_ogl()
 		const float sliderWidth = 100.0f; // largeur personnalisee pour chaque slider
 		if (ImGui::CollapsingHeader("Spatial Transformation"))
 		{
+			GLVec3 translation = waveNoise->getTranslation();
+			bool translationModified = false;
 			ImGui::PushItemWidth(sliderWidth);
-			ImGui::SliderFloat("X", &waveNoise->tX, 0.0, 10.0);
+			translationModified |= ImGui::SliderFloat( "X", &translation.x(), 0.0, 10.0 );
 			ImGui::SameLine();
-			ImGui::SliderFloat("Y", &waveNoise->tY, 0.0, 10.0);
+			translationModified |= ImGui::SliderFloat( "Y", &translation.y(), 0.0, 10.0 );
 			ImGui::SameLine();
-			ImGui::SliderFloat("Z", &waveNoise->tZ, 0.0, 10.0);
+			translationModified |= ImGui::SliderFloat( "Z", &translation.z(), 0.0, 10.0 );
 			ImGui::PopItemWidth(); // remet la largeur par defaut
+			if ( translationModified )
+			{
+				waveNoise->setTranslation( translation );
+			}
 
-			ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01, 2.0);
+			ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01f, 2.0f);
 		}
 	
 		// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
@@ -1017,7 +1023,7 @@ void Viewer::interface_ogl()
 				"[isotropic] Sum", "[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions", "[cellular] Random polytopes", "[cellular] Cellular",
 				"[cellular] Hyperplan",	 "[cellular] Reversed Cellular" };
 			ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
-			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2, 50.0);
+			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2f, 50.0f);
 		}
 
 		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)"))
@@ -1041,14 +1047,14 @@ void Viewer::interface_ogl()
 		{
 			const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
 			ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
-			ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1, 1.0);
+			ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1f, 1.0f);
 		}
 
 		if ( ImGui::CollapsingHeader( "Temporal & Animation Controls" ) )
 		{
 			ImGui::PushItemWidth( sliderWidth );
 			float velocity = waveNoise->getVelocity();
-			if ( ImGui::SliderFloat( "Speed", &velocity, 0.0, 0.1 ) )
+			if ( ImGui::SliderFloat( "Speed", &velocity, 0.0f, 0.1f ) )
 			{
 				waveNoise->setVelocity( velocity );
 			}
@@ -1106,7 +1112,7 @@ bool Viewer::display1DProfileWidget()
 			const std::vector< std::vector< double > >& spectralEnergyDistribution = waveNoise->spectralEnergyDistribution;
 			const std::vector< double >& mfs = spectralEnergyDistribution[ directionIndex ];
 			std::vector< float > samples( MAX_FREQ );
-			for ( int n = 0; n < MAX_FREQ; n++ )
+			for ( unsigned int n = 0; n < MAX_FREQ; n++ )
 			{
 				samples[ n ] = mfs[ n ];
 			}
@@ -1126,7 +1132,7 @@ bool Viewer::display1DProfileWidget()
 			const unsigned int mNARRAY = waveNoise->NARRAY;
 			const std::vector< std::vector< double > >& mfs = waveNoise->fs;
 			std::vector< float > samples( mNARRAY );
-			for ( int n = 0; n < mNARRAY; n++ )
+			for ( unsigned int n = 0; n < mNARRAY; n++ )
 			{
 				samples[ n ] = mfs[ n ][ 0 ]; // real part
 			}

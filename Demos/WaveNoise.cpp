@@ -63,6 +63,12 @@ using namespace std;
  * Constructor
  ******************************************************************************/
 WaveNoise::WaveNoise()
+: NRec( 0 )
+, Proba( 0.f )
+, tV( 0.f )
+, Time( 0.f )
+, MAX_FREQ( 0 )
+, mTranslation( EZCOGL::GLVec3() )
 {
 }
 
@@ -615,4 +621,20 @@ void WaveNoise::setTime( float pValue )
 int WaveNoise::getMaximumFrequency() const
 {
 	return MAX_FREQ;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+const EZCOGL::GLVec3& WaveNoise::getTranslation() const
+{
+	return mTranslation;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setTranslation( const EZCOGL::GLVec3& pT )
+{
+	mTranslation = pT;
 }
