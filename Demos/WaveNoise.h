@@ -22,6 +22,7 @@
 
  // EasyCppOGL
 #include <gl_eigen.h>
+#include <texture1d.h>
 
 // STL
 #include <vector>
@@ -64,7 +65,7 @@ public:
     float Ffreq_high;
 
     int Ndir, Oper;
-    float Orient, Zoom, Ratio, iRatio, Power, old_power, contrast, Anisodd;
+    float Orient, Ratio, iRatio, Power, old_power, contrast, Anisodd;
 
     int item_current, old_item;
     int complex_current;
@@ -127,6 +128,9 @@ public:
     const EZCOGL::GLVec3& getTranslation() const;
     void setTranslation( const EZCOGL::GLVec3& pT );
 
+    float getZoom() const;
+    void setZoom( float pValue );
+
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
      **************************************************************************/
@@ -166,6 +170,21 @@ protected:
      * Translation
      */
     EZCOGL::GLVec3 mTranslation;
+
+    /**
+     * Zoom
+     */
+    float Zoom;
+
+    /**
+     * 1D profile texture
+     */
+    EZCOGL::Texture1D::SP tex;
+
+    /**
+     * 1D profile's gradient texture
+     */
+    EZCOGL::Texture1D::SP texd;
 
     /******************************** METHODS *********************************/
 

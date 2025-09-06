@@ -69,6 +69,9 @@ WaveNoise::WaveNoise()
 , Time( 0.f )
 , MAX_FREQ( 0 )
 , mTranslation( EZCOGL::GLVec3() )
+, Zoom( 0.f )
+, tex( nullptr )
+, texd( nullptr )
 {
 }
 
@@ -415,8 +418,8 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 						ampli * cos(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
 					double vsin =
 						ampli * sin(scale * 2.0 * M_PI * (double)ii * freq * (double)k + phase + 2.0 * M_PI / 10.0);
-					sumr += vcos;
-					sumi += vsin;
+					sumr += static_cast< float >( vcos );
+					sumi += static_cast< float >( vsin );
 				}
 				A[i] = pow(10.0 * (sumr * sumr + sumi * sumi), 0.005);
 				if (A[i] > 1.0)
@@ -427,13 +430,13 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 
 	if ( item_current == 9 ) // normalize wave
 	{
-		float vmin = A[0], vmax = A[0];
+		float vmin = static_cast< float >( A[ 0 ] ), vmax = static_cast< float >( A[ 0 ] );
 		for (i = 0; i < N; i++)
 		{
-			if (vmin > A[i])
-				vmin = A[i];
-			if (vmax < A[i])
-				vmax = A[i];
+			if ( vmin > A[ i ] )
+				vmin = static_cast< float >( A[ i ] );
+			if ( vmax < A[ i ] )
+				vmax = static_cast< float >( A[ i ] );
 		}
 		for (i = 0; i < N; i++)
 		{
@@ -637,4 +640,20 @@ const EZCOGL::GLVec3& WaveNoise::getTranslation() const
 void WaveNoise::setTranslation( const EZCOGL::GLVec3& pT )
 {
 	mTranslation = pT;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+float WaveNoise::getZoom() const
+{
+	return Zoom;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setZoom( float pValue )
+{
+	Zoom = pValue;
 }

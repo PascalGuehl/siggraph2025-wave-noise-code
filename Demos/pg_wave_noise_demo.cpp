@@ -772,7 +772,7 @@ Viewer::Viewer()
 	waveNoise->setVelocity( 0.0 );
 	waveNoise->Ndir = 40;
 	waveNoise->Orient = 1.0f;
-	waveNoise->Zoom = 0.2f;
+	waveNoise->setZoom( 0.2f );
 	waveNoise->setTime( 0.0f );
 	waveNoise->item_current = 0; // Gaussian
 	waveNoise->Oper = 0;		 // Isowave
@@ -916,9 +916,9 @@ void Viewer::draw_ogl()
 		set_uniform_value( 21, current_time() );
 	}
 
-	waveNoise->Ratio = (float)pow(2.0, waveNoise->iRatio );
+	waveNoise->Ratio = (float)pow( 2.0, waveNoise->iRatio );
 	set_uniform_value( 22, waveNoise->Ratio );
-	set_uniform_value( 19, waveNoise->Zoom * waveNoise->Ratio );
+	set_uniform_value( 19, waveNoise->getZoom() * waveNoise->Ratio );
 	set_uniform_value( 23, waveNoise->complex_current );
 	set_uniform_value( 24, waveNoise->contrast );
 	set_uniform_value( 30, waveNoise->Oper );
@@ -980,7 +980,11 @@ void Viewer::interface_ogl()
 				waveNoise->setTranslation( translation );
 			}
 
-			ImGui::SliderFloat("Zoom", &waveNoise->Zoom, 0.01f, 2.0f);
+			float zoom = waveNoise->getZoom();
+			if ( ImGui::SliderFloat( "Zoom", &zoom, 0.01f, 2.0f ) )
+			{
+				waveNoise->setZoom( zoom );
+			}
 		}
 	
 		// ImGui::Text("MEM:  %2.2lf %%", 100.0 * mem_);
