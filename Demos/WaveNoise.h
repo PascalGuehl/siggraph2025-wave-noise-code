@@ -108,7 +108,7 @@ public:
 
     /**
      * Precision of the pre-computed wave (sampling rate)
-     * */
+     */
     int NARRAY;
     int NDIR;
 
