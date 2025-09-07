@@ -704,6 +704,11 @@ Viewer::Viewer()
 , mGPUTimeElapsed( 0 )
 , mUseContinuousAnimation( false )
 , iRatio( 0.f )
+, sFREQ_LOW( 0 )
+, sFREQ_HIGH( 0 )
+, Ffreq_low( 0.f )
+, Ffreq_high( 0.f )
+, old_power( 0.f )
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
@@ -738,7 +743,7 @@ void Viewer::initializeNoise()
 	// Dafault parameters value
 	waveNoise->setTranslation( GLVec3( 0.f, 0.f, 0.f ) );
 	waveNoise->setVelocity( 0.0 );
-	waveNoise->Ndir = 40;
+	waveNoise->setNbOrientations( 40 );
 	waveNoise->Orient = 1.0f;
 	waveNoise->setZoom( 0.2f );
 	waveNoise->setTime( 0.0f );
@@ -747,8 +752,7 @@ void Viewer::initializeNoise()
 	waveNoise->old_item = 0;
 	waveNoise->setRatio( 64.0f );
 	waveNoise->complex_current = 0;
-	waveNoise->Power = 25.0;
-	waveNoise->old_power = 1.0;
+	waveNoise->setPower( 25.f );
 	waveNoise->contrast = 0.5;
 	waveNoise->setRecursionProbability( 0.5 );
 	waveNoise->setRecursionLevel( 3 );
@@ -789,11 +793,20 @@ void Viewer::init_ogl()
 	// Initialize the noise
 	initializeNoise();
 
-	// Initialize GUI
+	// Initialize wave noise's helper parameters
 	iRatio = std::log2f( waveNoise->getRatio() );
+	sFREQ_LOW = waveNoise->getMinFrequency(); // 1
+	sFREQ_HIGH = waveNoise->getMaxFrequency(); // 32
+	Ffreq_low = 1.0 / 64.0; // TODO: explain this value!
+	Ffreq_high = 32.0 / 64.0; // TODO: explain this value!
+	old_power = 1.f;
 
 	// Device timer
 	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
+
+	// Set global GL states
+	glEnable( GL_DEPTH_TEST );
+	glClearColor( 1.0, 1.0, 1.0, 0.0 );
 }
 
 /******************************************************************************
@@ -806,26 +819,22 @@ void Viewer::close_ogl()
 }
 
 /******************************************************************************
- * Callback for custom rendering/compute function
+ * Update noise if requested (not clean and not optimized...)
  ******************************************************************************/
-void Viewer::draw_ogl()
+void Viewer::updateNoise()
 {
-	glEnable( GL_DEPTH_TEST );
-	glClearColor( 1.0, 1.0, 1.0, 0.0 );
-	glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT );
+	waveNoise->setMinFrequency( (int)( Ffreq_low * 64.0 ) );
+	waveNoise->setMaxFrequency( (int)( Ffreq_high * 64.0 ) );
 
-	waveNoise->FREQ_LOW = (int)(waveNoise->Ffreq_low * 64.0);
-	waveNoise->FREQ_HIGH = (int)(waveNoise->Ffreq_high * 64.0);
-
-	if ( waveNoise->FREQ_LOW != waveNoise->sFREQ_LOW ||
-		 waveNoise->FREQ_HIGH != waveNoise->sFREQ_HIGH ||
+	if ( waveNoise->getMinFrequency() != sFREQ_LOW ||
+		 waveNoise->getMaxFrequency() != sFREQ_HIGH ||
 		 waveNoise->item_current != waveNoise->old_item ||
-		( waveNoise->item_current >= 4 && waveNoise->old_power != waveNoise->Power ) )
+		( waveNoise->item_current >= 4 && old_power != waveNoise->getPower() ) )
 	{
-		waveNoise->sFREQ_LOW = waveNoise->FREQ_LOW;
-		waveNoise->sFREQ_HIGH = waveNoise->FREQ_HIGH;
+		sFREQ_LOW = waveNoise->getMinFrequency();
+		sFREQ_HIGH = waveNoise->getMaxFrequency();
 		waveNoise->old_item = waveNoise->item_current;
-		waveNoise->old_power = waveNoise->Power;
+		old_power = waveNoise->getPower();
 		if ( waveNoise->item_current >= 4 && waveNoise->item_current <= 9 )
 		{
 			int pow_2 = 1, N = 1;
@@ -848,6 +857,17 @@ void Viewer::draw_ogl()
 		waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
 		waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 	}
+}
+
+/******************************************************************************
+ * Callback for custom rendering/compute function
+ ******************************************************************************/
+void Viewer::draw_ogl()
+{
+	glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT );
+
+	// Update noise if requested (not clean and not optimized...)
+	updateNoise();
 
 	// Bind shader program
 	prg_p->bind();
@@ -873,10 +893,10 @@ void Viewer::draw_ogl()
 	GLVec3 translation = waveNoise->getTranslation() + GLVec3( 5.f, 5.f, 5.f );
 	set_uniform_value( 25, translation );
 	
-	set_uniform_value( 15, waveNoise->Ndir );
+	set_uniform_value( 15, waveNoise->getNbOrientations() ); // problem? uniforms 15 and 18 are the same! why?
 	set_uniform_value( 16, waveNoise->Anisodd );
 	
-	set_uniform_value( 18, waveNoise->Ndir );
+	set_uniform_value( 18, waveNoise->getNbOrientations() ); // problem? uniforms 15 and 18 are the same! why?
 
 	set_uniform_value( 20, waveNoise->getVelocity() );
 	if ( ! mUseContinuousAnimation )
@@ -965,7 +985,12 @@ void Viewer::interface_ogl()
 			//ImGui::Text("Quality vs.Framerate");
 			if (ImGui::TreeNode("Quality vs. Framerate"))
 			{
-				ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
+				int nbOrientations = waveNoise->getNbOrientations();
+				if ( ImGui::SliderInt( "NDir", &nbOrientations, 1, 100 ) )
+				{
+					waveNoise->setNbOrientations( nbOrientations );
+				}
+
 				if ( ImGui::SliderFloat( "Slice size", &iRatio, 0.0, 8.0 ) )
 				{
 					waveNoise->setRatio( (float)pow( 2.0, iRatio ) );
@@ -980,9 +1005,9 @@ void Viewer::interface_ogl()
 				ImGui::SliderFloat("aniso wave dir width", &waveNoise->Anisodd, 0.0, 1.0);
 
 				ImGui::PushItemWidth(sliderWidth);
-				ImGui::SliderFloat("FreqMin", &waveNoise->Ffreq_low, 1.0 / 64.0, 1.0);
+				ImGui::SliderFloat("FreqMin", &Ffreq_low, 1.0 / 64.0, 1.0);
 				ImGui::SameLine();
-				ImGui::SliderFloat("FreqMax", &waveNoise->Ffreq_high, 1.0 / 64.0, 1.0);
+				ImGui::SliderFloat("FreqMax", &Ffreq_high, 1.0 / 64.0, 1.0);
 				ImGui::PopItemWidth(); // remet la largeur par d�faut
 
 				ImGui::TreePop();
@@ -1001,7 +1026,11 @@ void Viewer::interface_ogl()
 				"[isotropic] Sum", "[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions", "[cellular] Random polytopes", "[cellular] Cellular",
 				"[cellular] Hyperplan",	 "[cellular] Reversed Cellular" };
 			ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
-			ImGui::SliderFloat("nongauss wave sharpness", &waveNoise->Power, 0.2f, 50.0f);
+			float power = waveNoise->getPower();
+			if ( ImGui::SliderFloat( "[non-gaussian] wave sharpness", &power, 0.2f, 50.0f ) )
+			{
+				waveNoise->setPower( power );
+			}
 		}
 
 		if (ImGui::CollapsingHeader("Cellular Noise Settings (STIT)"))

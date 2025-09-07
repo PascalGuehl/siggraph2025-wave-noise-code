@@ -64,6 +64,8 @@ using namespace std;
  ******************************************************************************/
 WaveNoise::WaveNoise()
 : NRec( 0 )
+, FREQ_LOW( 0 )
+, FREQ_HIGH( 0 )
 , Proba( 0.f )
 , tV( 0.f )
 , Time( 0.f )
@@ -71,6 +73,7 @@ WaveNoise::WaveNoise()
 , mTranslation( EZCOGL::GLVec3() )
 , Zoom( 0.f )
 , Ratio( 0.f )
+, Power( 0.f )
 , tex( nullptr )
 , texd( nullptr )
 , spectralEnergyDistribution()
@@ -96,11 +99,7 @@ void WaveNoise::initialize()
 	NDIR = 20;			 // 40+50;
 
 	FREQ_LOW = 1;
-	sFREQ_LOW = 1;
 	FREQ_HIGH = 32;
-	sFREQ_HIGH = 32;
-	Ffreq_low = 1.0 / 64.0;
-	Ffreq_high = 32.0 / 64.0;
 
 	// Isotropic noise pre-computed arrays
 	fs.resize( NARRAY );
@@ -544,7 +543,7 @@ void WaveNoise::precomputePlanarWaveFromFFT1D( double* A, int N, int pow_2 )
  ******************************************************************************/
 int WaveNoise::getNbOrientations() const
 {
-	return NDIR;
+	return Ndir;
 }
 
 /******************************************************************************
@@ -552,7 +551,39 @@ int WaveNoise::getNbOrientations() const
  ******************************************************************************/
 void WaveNoise::setNbOrientations( int pValue )
 {
-	NDIR = pValue;
+	Ndir = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+int WaveNoise::getMinFrequency() const
+{
+	return FREQ_LOW;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setMinFrequency( int pValue )
+{
+	FREQ_LOW = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+int WaveNoise::getMaxFrequency() const
+{
+	return FREQ_HIGH;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setMaxFrequency( int pValue )
+{
+	FREQ_HIGH = pValue;
 }
 
 /******************************************************************************
@@ -674,6 +705,22 @@ float WaveNoise::getRatio() const
 void WaveNoise::setRatio( float pValue )
 {
 	Ratio = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+float WaveNoise::getPower() const
+{
+	return Power;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setPower( float pValue )
+{
+	Power = pValue;
 }
 
 /******************************************************************************

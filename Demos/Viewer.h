@@ -75,11 +75,6 @@ public:
 	void interface_ogl() override;
 	void close_ogl() override;
 
-	void initializeNoise();
-
-	bool display1DProfileWidget();
-	void displayPeformance();
-
 	void setTitle( const char* pText );
 
 	/**************************************************************************
@@ -104,8 +99,14 @@ private:
 
 	/******************************* ATTRIBUTES *******************************/
 
+	/**
+	 * Shader program
+	 */
 	EZCOGL::ShaderProgram::UP prg_p;
 
+	/**
+	 * Mesh renderer
+	 */
 	std::vector< EZCOGL::MeshRenderer::UP > renderer_p;
 	int nbMeshParts;
 
@@ -117,10 +118,28 @@ private:
 	 * Wave noise
 	 */
 	Wn::WaveNoise* waveNoise;
+	
+	/**
+	 * Wave noise's helper parameters
+	 */
 	bool mUseContinuousAnimation;
-
 	float iRatio;
+	int sFREQ_LOW;
+	int sFREQ_HIGH;
+	float Ffreq_low;
+	float Ffreq_high;
+	float old_power;
 
 	/******************************** METHODS *********************************/
+
+	void initializeNoise();
+
+	bool display1DProfileWidget();
+	void displayPeformance();
+
+	/**
+	 * Update noise if requested (not clean and not optimized...)
+	 */
+	void updateNoise();
 
 };

@@ -57,15 +57,8 @@ public:
     int NARRAY;
     int NDIR;
 
-    int FREQ_LOW;
-    int sFREQ_LOW;
-    int FREQ_HIGH;
-    int sFREQ_HIGH;
-    float Ffreq_low;
-    float Ffreq_high;
-
-    int Ndir, Oper;
-    float Orient, Power, old_power, contrast, Anisodd;
+    int Oper;
+    float Orient, contrast, Anisodd;
 
     int item_current, old_item;
     int complex_current;
@@ -118,6 +111,12 @@ public:
     int getNbOrientations() const;
     void setNbOrientations( int pValue );
 
+    int getMinFrequency() const;
+    void setMinFrequency( int pValue );
+
+    int getMaxFrequency() const;
+    void setMaxFrequency( int pValue );
+
     int getRecursionLevel() const;
     void setRecursionLevel( int pValue );
     
@@ -141,6 +140,9 @@ public:
     float getRatio() const;
     void setRatio( float pValue );
 
+    float getPower() const;
+    void setPower( float pValue );
+
     // The user defined discrete spectral energy distribution used for noise control
     const std::vector< std::vector< double > >& getSpectralEnergyDistribution() const;
     std::vector< std::vector< double > >& editSpectralEnergyDistribution();
@@ -155,6 +157,21 @@ protected:
     /****************************** INNER TYPES *******************************/
 
     /******************************* ATTRIBUTES *******************************/
+
+    /**
+     * Number of orientations
+     */
+    int Ndir;
+
+    /**
+     * Minimum frequency
+     */
+    int FREQ_LOW;
+
+    /**
+     * Maximum frequency
+     */
+    int FREQ_HIGH;
 
     /**
      * Maximum recursion level for cellular noise
@@ -195,6 +212,11 @@ protected:
      * ...
      */
     float Ratio;
+
+    /**
+     * [non-gaussian] wave sharpness
+     */
+    float Power;
 
     // The user defined discrete spectral energy distribution used for noise control
     /**
