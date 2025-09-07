@@ -51,14 +51,25 @@ using namespace std;
  ************************* DEFINE AND CONSTANT SECTION ************************
  ******************************************************************************/
 
+ /**
+  * Wave type names
+  */
+const std::vector< std::string > WaveNoise::mWaveTypeNames = {
+	"[noise] gaussian", "[noise] white (0dB)", "[noise] blue (+3dB)", "[noise] brown (-6dB)",
+	"[non-gaussian] crystal1", "[non-gaussian] web", "[non-gaussian] marble", "[non-gaussian] crystal2", "[non-gaussian] scratches", "[non-gaussian] smooth cells",
+	"[noise] two ampli levels"
+};
+
+/**
+ * Value type names
+ */
+const std::vector< std::string > WaveNoise::mValueTypeNames = {
+	"real", "imaginary", "modulus", "phasor"
+};
+
 /******************************************************************************
  ***************************** TYPE DEFINITION ********************************
  ******************************************************************************/
-
- /**
-  * Value type names
-  */
-const std::vector< std::string > WaveNoise::mValueTypeNames = { "real", "imaginary", "modulus", "phasor" };
 
 /******************************************************************************
  ***************************** METHOD DEFINITION ******************************
@@ -83,6 +94,7 @@ WaveNoise::WaveNoise()
 , texd( nullptr )
 , spectralEnergyDistribution()
 , mValueType( WaveNoise::EValueType::eReal )
+, mWaveType( WaveNoise::EWaveType::eNoiseGaussian )
 {
 }
 
@@ -144,30 +156,30 @@ void WaveNoise::createIsotropicProceduralEnergyDistri()
 		if ( ii >= FREQ_LOW && ii <= FREQ_HIGH )
 		{
 			double freq = (double)ii / (double)(NARRAY / 2);
-			switch ( item_current )
+			switch ( mWaveType )
 			{
-				case 0:
+				case WaveNoise::EWaveType::eNoiseGaussian:
 					// ampli decrease as gaussian -> gaussian noise 
 					freq = (double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW);
 					ampli = 1.0 / 16.0 * exp(-freq * freq * 3.0 * 3.0);
 					break;
 
-				case 1:
+				case WaveNoise::EWaveType::eNoiseWhite:
 					// ampli constant -> white noise  
 					ampli = 1.0 / 8.0;
 					break;
 
-				case 2:
+				case WaveNoise::EWaveType::eNoiseBlue:
 					// ampli increases -> blue noise  
 					ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0;
 					break;
 
-				case 3:
+				case WaveNoise::EWaveType::eNoiseBrown:
 					// ampli decrease -> brown noise
 					ampli = 1.0 / 16.0 * (1.0 - pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 0.045));
 					break;
 
-				case 10:
+				case WaveNoise::EWaveType::eNoiseTwoAmpliLevels:
 					// ampli constant on two-steps -> two-level white noise
 					if (ii < 64 / FF)
 						ampli = 0.0;
@@ -296,10 +308,10 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 		double step = 1.0, aa = 4.0;
 		float sumr = 0.0, sumi = 0.0;
 
-		switch ( item_current )
+		switch ( mWaveType )
 		{
 			// periodic peaks - wave type: "nongauss-crystal1"
-			case 4:
+			case WaveNoise::EWaveType::eNonGaussianCrystal1:
 				if (x <= 1.0)
 					A[i] = 0.8 * (2.0 * pow(x, Power) - 1.0); // Power=50.0
 				else
@@ -309,7 +321,7 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 				break;
 
 			// other peaks - wave type: "nongauss-web"
-			case 5:
+			case WaveNoise::EWaveType::eNonGaussianWeb:
 				if (ii < 20)
 					A[i] = (ii < 10 ? (double)ii / 10.0 : 1.0 - (double)(ii - 10) / 10.0);
 				else if (ii < 60)
@@ -335,7 +347,7 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 				break;
 
 			// triangular functions - wave type: "nongauss-marble"
-			case 6:
+			case WaveNoise::EWaveType::eNonGaussianMarble:
 				A[i] = 0.0;
 				for (int k = 0; k < 5; k++)
 				{
@@ -372,7 +384,7 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 				break;
 
 			// multi step function - wave type: "nongauss-crystal2"
-			case 7:
+			case WaveNoise::EWaveType::eNonGaussianCrystal2:
 				if (ii < 60)
 					A[i] = 0.0;
 				else if (ii < 120)
@@ -388,14 +400,14 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 				break;
 
 			// threshold from spectrum - wave type: "nongauss-scratches"
-			case 8:
+			case WaveNoise::EWaveType::eNonGaussianScratches:
 				A[i] = 0.0;
 				for (int k = finit; k < finit + Nfreq; k++)
 				{
 					double phase = 2.0 * M_PI * rphases[k]; // inoise(2 * k, 0, 0);
 					double freq = 1.0 / (float)NARRAY;
 					double ampli;
-					if (item_current == 8)
+					if ( mWaveType == WaveNoise::EWaveType::eNonGaussianScratches )
 						ampli = pow((double)(ii - FREQ_LOW) / (double)(FREQ_HIGH - FREQ_LOW), 2.0) / 16.0 / (double)NARRAY;
 					double vcos = ampli * cos(2.0 * M_PI * (double)i * freq * (double)k + phase + 2.0 * M_PI / 10.0);
 					A[i] += vcos;
@@ -406,13 +418,13 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 				else if (A[i] < -1.0)
 					A[i] = -1.0;
 				if (A[i] >= 0.0)
-					A[i] = 5.0 * pow(A[i], item_current == 8 ? Power * 0.1 : Power); // Power=2.0
+					A[i] = 5.0 * pow(A[i], mWaveType == WaveNoise::EWaveType::eNonGaussianScratches ? Power * 0.1 : Power); // Power=2.0
 				else
-					A[i] = -5.0 * pow(-A[i], item_current == 8 ? Power * 0.1 : Power);
+					A[i] = -5.0 * pow(-A[i], mWaveType == WaveNoise::EWaveType::eNonGaussianScratches ? Power * 0.1 : Power);
 				break;
 
 			// contrast augmented spectrum - wave type: "nongauss-smooth cells"
-			case 9:
+			case WaveNoise::EWaveType::eNonGaussianSmoothCells:
 				for (int k = FREQ_LOW; k < FREQ_HIGH; k++)
 				{
 					// random phase
@@ -435,7 +447,7 @@ double* WaveNoise::MakeSpatialWaveProfile( int pow_2 )
 		}
 	}
 
-	if ( item_current == 9 ) // normalize wave
+	if ( mWaveType == WaveNoise::EWaveType::eNonGaussianSmoothCells ) // normalize wave
 	{
 		float vmin = static_cast< float >( A[ 0 ] ), vmax = static_cast< float >( A[ 0 ] );
 		for (i = 0; i < N; i++)

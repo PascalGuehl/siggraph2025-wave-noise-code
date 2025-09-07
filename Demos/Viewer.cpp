@@ -747,7 +747,7 @@ void Viewer::initializeNoise()
 	waveNoise->Orient = 1.0f;
 	waveNoise->setZoom( 0.2f );
 	waveNoise->setTime( 0.0f );
-	waveNoise->item_current = 0; // Gaussian
+	waveNoise->mWaveType = Wn::WaveNoise::EWaveType::eNoiseGaussian;
 	waveNoise->Oper = 0;		 // Isowave
 	waveNoise->old_item = 0;
 	waveNoise->setRatio( 64.0f );
@@ -828,14 +828,15 @@ void Viewer::updateNoise()
 
 	if ( waveNoise->getMinFrequency() != sFREQ_LOW ||
 		 waveNoise->getMaxFrequency() != sFREQ_HIGH ||
-		 waveNoise->item_current != waveNoise->old_item ||
-		( waveNoise->item_current >= 4 && old_power != waveNoise->getPower() ) )
+		 static_cast< int >( waveNoise->mWaveType ) != waveNoise->old_item ||
+		( static_cast< int >( waveNoise->mWaveType ) >= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianCrystal1 ) && old_power != waveNoise->getPower() ) )
 	{
 		sFREQ_LOW = waveNoise->getMinFrequency();
 		sFREQ_HIGH = waveNoise->getMaxFrequency();
-		waveNoise->old_item = waveNoise->item_current;
+		waveNoise->old_item = static_cast< int >( waveNoise->mWaveType );
 		old_power = waveNoise->getPower();
-		if ( waveNoise->item_current >= 4 && waveNoise->item_current <= 9 )
+		if ( static_cast< int >( waveNoise->mWaveType ) >= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianCrystal1 ) &&
+			 static_cast< int >( waveNoise->mWaveType ) <= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianSmoothCells ) )
 		{
 			int pow_2 = 1, N = 1;
 			while ( N < waveNoise->NARRAY )
@@ -1016,12 +1017,23 @@ void Viewer::interface_ogl()
 
 		if (ImGui::CollapsingHeader("Waveforms & Noise Types"))
 		{
-			const char* items[] = { "[noise] gaussian",			   "[noise] white (0dB)",	  "[noise] blue (+3dB)",
-								    "[noise] brown (-6dB)",		   "[non-gaussian] crystal1", "[non-gaussian] web",
-								    "[non-gaussian] marble",	   "[non-gaussian] crystal2", "[non-gaussian] scratches",
-								    "[non-gaussian] smooth cells", "[noise] two ampli levels" };
-			ImGui::Combo("Wave type", &waveNoise->item_current, items, IM_ARRAYSIZE(items));
-
+			auto& waveTypeNames = Wn::WaveNoise::mWaveTypeNames;
+			static std::vector< const char* > waveTypeItems; // built only once!
+			if ( waveTypeItems.size() != waveTypeNames.size() )
+			{
+				waveTypeItems.clear();
+				waveTypeItems.reserve( waveTypeNames.size() );
+				for ( auto& s : waveTypeNames )
+				{
+					waveTypeItems.push_back( s.c_str() );
+				}
+			}
+			int waveType = static_cast< int >( waveNoise->mWaveType );
+			if ( ImGui::Combo( "Wave type", &waveType, waveTypeItems.data(), (int)waveTypeItems.size() ) )
+			{
+				waveNoise->mWaveType = static_cast< Wn::WaveNoise::EWaveType >( waveType );
+			}
+			
 			const char* itemsop[] = {
 				"[isotropic] Sum", "[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions", "[cellular] Random polytopes", "[cellular] Cellular",
 				"[cellular] Hyperplan",	 "[cellular] Reversed Cellular" };
@@ -1064,7 +1076,7 @@ void Viewer::interface_ogl()
 				}
 			}
 			int valueType = static_cast< int >( waveNoise->mValueType );
-			if ( ImGui::Combo( "Value", &valueType, valueTypeItems.data(), (int)valueTypeItems.size() ) )
+			if ( ImGui::Combo( "Value type", &valueType, valueTypeItems.data(), (int)valueTypeItems.size() ) )
 			{
 				waveNoise->mValueType = static_cast< Wn::WaveNoise::EValueType >( valueType );
 			}
@@ -1120,12 +1132,9 @@ bool Viewer::display1DProfileWidget()
 	{
 		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), "Amplitude (energy distribution)" );
 		
-		const char* items[] = { "[noise] gaussian",			   "[noise] white (0dB)",	  "[noise] blue (+3dB)",
-								    "[noise] brown (-6dB)",		   "[non-gaussian] crystal1", "[non-gaussian] web",
-								    "[non-gaussian] marble",	   "[non-gaussian] crystal2", "[non-gaussian] scratches",
-								    "[non-gaussian] smooth cells", "[noise] two ampli levels" };
-		const std::string wave_type = std::string( items[ waveNoise->item_current ] );
-		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), wave_type.c_str() );
+		const int waveType = static_cast< int >( waveNoise->mWaveType );
+		const std::string waveTypeName = Wn::WaveNoise::mWaveTypeNames[ waveType ];
+		ImGui::TextColored( ImVec4( 0.f, 1.f, 0.f, 1.f ), waveTypeName.c_str() );
 
 		// Display amplitude's energy distribution
 		{

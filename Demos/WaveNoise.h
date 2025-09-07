@@ -71,11 +71,18 @@ public:
      */
     enum class EWaveType
     {
-        eReal = 0,
-        eImaginary,
-        eModulus,
-        eArgument,
-        eNbValueTypes
+        eNoiseGaussian = 0,
+        eNoiseWhite,
+        eNoiseBlue,
+        eNoiseBrown,
+        eNonGaussianCrystal1,
+        eNonGaussianWeb,
+        eNonGaussianMarble,
+        eNonGaussianCrystal2,
+        eNonGaussianScratches,
+        eNonGaussianSmoothCells,
+        eNoiseTwoAmpliLevels,
+        eNbWaveTypes
     };
     EWaveType mWaveType;
     static const std::vector< std::string > mWaveTypeNames;
@@ -89,7 +96,7 @@ public:
     int Oper;
     float Orient, contrast, Anisodd;
 
-    int item_current, old_item;
+    int old_item;
 
     // Isotropic noise pre-computed arrays
     std::vector< std::vector< double > > fs;
