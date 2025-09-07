@@ -55,8 +55,57 @@ namespace Wn
 // Creation du VIEWER
 class Viewer : public EZCOGL::GLViewer
 {
+	/**************************************************************************
+	 ***************************** PUBLIC SECTION *****************************
+	 **************************************************************************/
+
+public:
+
+	/****************************** INNER TYPES *******************************/
+
+	/******************************* ATTRIBUTES *******************************/
+
+	/******************************** METHODS *********************************/
+
+	Viewer();
+	~Viewer();
+
+	void init_ogl() override;
+	void draw_ogl() override;
+	void interface_ogl() override;
+	void close_ogl() override;
+
+	void initializeNoise();
+
+	bool display1DProfileWidget();
+	void displayPeformance();
+
+	void setTitle( const char* pText );
+
+	/**************************************************************************
+	 **************************** PROTECTED SECTION ***************************
+	 **************************************************************************/
+
+protected:
+
+	/****************************** INNER TYPES *******************************/
+
+	/******************************* ATTRIBUTES *******************************/
+
+	/******************************** METHODS *********************************/
+
+	/**************************************************************************
+	 ***************************** PRIVATE SECTION ****************************
+	 **************************************************************************/
+
+private:
+
+	/****************************** INNER TYPES *******************************/
+
+	/******************************* ATTRIBUTES *******************************/
+
 	EZCOGL::ShaderProgram::UP prg_p;
-	
+
 	std::vector< EZCOGL::MeshRenderer::UP > renderer_p;
 	int nbMeshParts;
 
@@ -70,17 +119,6 @@ class Viewer : public EZCOGL::GLViewer
 	Wn::WaveNoise* waveNoise;
 	bool mUseContinuousAnimation;
 
-public:
+	/******************************** METHODS *********************************/
 
-	Viewer();
-	~Viewer();
-
-	void init_ogl() override;
-	void draw_ogl() override;
-	void interface_ogl() override;
-
-	bool display1DProfileWidget();
-	void displayPeformance();
-
-	void setTitle( const char* pText );
 };

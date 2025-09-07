@@ -706,6 +706,32 @@ Viewer::Viewer()
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
+}
+
+/******************************************************************************
+ * Destructor
+ ******************************************************************************/
+Viewer::~Viewer()
+{
+	delete waveNoise;
+	waveNoise = nullptr;
+}
+
+/******************************************************************************
+ * Set title
+ ******************************************************************************/
+void Viewer::setTitle( const char* pText )
+{
+	GLFWwindow* w = window();
+	glfwSetWindowTitle( w, "Multi-Dimensional Procedural Wave Noise" );
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::initializeNoise()
+{
+	// Initialize noise
 	waveNoise->initialize();
 
 	// Dafault parameters value
@@ -729,27 +755,15 @@ Viewer::Viewer()
 	waveNoise->Anisodd = 0.5;
 	
 	// Precompute 1D profile wave(s)
-	// iso3dangles();
 	waveNoise->createIsotropicProceduralEnergyDistri();
 	waveNoise->precomputePlanarWave( 4.0 );
-}
 
-/******************************************************************************
- * Destructor
- ******************************************************************************/
-Viewer::~Viewer()
-{
-	// Device timer
-	glDeleteQueries( 1, &mQueryTimeElapsed );
-}
-
-/******************************************************************************
- * Set title
- ******************************************************************************/
-void Viewer::setTitle( const char* pText )
-{
-	GLFWwindow* w = window();
-	glfwSetWindowTitle( w, "Multi-Dimensional Procedural Wave Noise" );
+	// Wave 1D profile
+	waveNoise->tex = Texture1D::create();
+	waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
+	// Wave 1D profile's gradient
+	waveNoise->texd = Texture1D::create();
+	waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 }
 
 /******************************************************************************
@@ -772,16 +786,21 @@ void Viewer::init_ogl()
 	set_scene_radius(3.0 * mesh[0]->BB()->radius());
 	// set_scene_radius(50.f);
 
-	waveNoise->tex = Texture1D::create();
-	// tex->update(0, N, wprofile);
-	waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
-
-	waveNoise->texd = Texture1D::create();
-	// tex->update(0, N, wprofile);
-	waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+	// Initialize the noise
+	initializeNoise();
 
 	// Device timer
 	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
+}
+
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void Viewer::close_ogl()
+{
+	// Device timer
+	glDeleteQueries( 1, &mQueryTimeElapsed );
 }
 
 /******************************************************************************
