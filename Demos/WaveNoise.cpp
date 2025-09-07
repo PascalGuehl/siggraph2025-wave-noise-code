@@ -64,7 +64,7 @@ const std::vector< std::string > WaveNoise::mWaveTypeNames = {
  * Value type names
  */
 const std::vector< std::string > WaveNoise::mValueTypeNames = {
-	"real", "imaginary", "modulus", "phasor"
+	"real", "imaginary", "modulus (magnitude)", "argument (phase)"
 };
 
 /******************************************************************************
