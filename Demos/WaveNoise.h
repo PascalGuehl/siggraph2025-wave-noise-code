@@ -87,13 +87,31 @@ public:
     EWaveType mWaveType;
     static const std::vector< std::string > mWaveTypeNames;
 
+    /**
+     * Operator type
+     */
+    enum class EOperatorType
+    {
+        eIsotropicSum = 0,
+        eAnisotropicSumOneDirection,
+        eAnisotropicSumTwoDirections,
+        eCellularRandomPolytopes,
+        eCellularCellular,
+        eCellularHyperplan,
+        eCellularReversedCellular,
+        eNbOperatorTypes
+    };
+    EOperatorType mOperatorType;
+    static const std::vector< std::string > mOperatorTypeNames;
+
     /******************************* ATTRIBUTES *******************************/
 
-    // precision of the pre-computed wave (sampling rate)
+    /**
+     * Precision of the pre-computed wave (sampling rate)
+     * */
     int NARRAY;
     int NDIR;
 
-    int Oper;
     float Orient, contrast, Anisodd;
 
     // Isotropic noise pre-computed arrays

@@ -750,7 +750,7 @@ void Viewer::initializeNoise()
 	waveNoise->setZoom( 0.2f );
 	waveNoise->setTime( 0.0f );
 	waveNoise->mWaveType = Wn::WaveNoise::EWaveType::eNoiseGaussian;
-	waveNoise->Oper = 0;		 // Isowave
+	waveNoise->mOperatorType = Wn::WaveNoise::EOperatorType::eIsotropicSum;
 	waveNoise->setRatio( 64.0f );
 	waveNoise->mValueType = Wn::WaveNoise::EValueType::eReal;
 	waveNoise->setPower( 25.f );
@@ -915,7 +915,7 @@ void Viewer::draw_ogl()
 	set_uniform_value( 19, waveNoise->getZoom() * waveNoise->getRatio() );
 	set_uniform_value( 23, static_cast< int >( waveNoise->mValueType ) );
 	set_uniform_value( 24, waveNoise->contrast );
-	set_uniform_value( 30, waveNoise->Oper );
+	set_uniform_value( 30, static_cast< int >( waveNoise->mOperatorType ) );
 
 	set_uniform_value( 31, waveNoise->getRecursionLevel() );
 	set_uniform_value( 32, waveNoise->getRecursionProbability() );
@@ -1036,10 +1036,23 @@ void Viewer::interface_ogl()
 				waveNoise->mWaveType = static_cast< Wn::WaveNoise::EWaveType >( waveType );
 			}
 			
-			const char* itemsop[] = {
-				"[isotropic] Sum", "[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions", "[cellular] Random polytopes", "[cellular] Cellular",
-				"[cellular] Hyperplan",	 "[cellular] Reversed Cellular" };
-			ImGui::Combo("Operator", &waveNoise->Oper, itemsop, IM_ARRAYSIZE(itemsop));
+			auto& operatorTypeNames = Wn::WaveNoise::mOperatorTypeNames;
+			static std::vector< const char* > operatorTypeItems; // built only once!
+			if ( operatorTypeItems.size() != operatorTypeNames.size() )
+			{
+				operatorTypeItems.clear();
+				operatorTypeItems.reserve( operatorTypeNames.size() );
+				for ( auto& s : operatorTypeNames )
+				{
+					operatorTypeItems.push_back( s.c_str() );
+				}
+			}
+			int operatorType = static_cast< int >( waveNoise->mOperatorType );
+			if ( ImGui::Combo( "Operator", &operatorType, operatorTypeItems.data(), (int)operatorTypeItems.size() ) )
+			{
+				waveNoise->mOperatorType = static_cast< Wn::WaveNoise::EOperatorType >( operatorType );
+			}
+
 			float power = waveNoise->getPower();
 			if ( ImGui::SliderFloat( "[non-gaussian] wave sharpness", &power, 0.2f, 50.0f ) )
 			{

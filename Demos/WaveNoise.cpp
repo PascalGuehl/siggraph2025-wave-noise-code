@@ -61,6 +61,15 @@ const std::vector< std::string > WaveNoise::mWaveTypeNames = {
 };
 
 /**
+ * Operator type names
+ */
+const std::vector< std::string > WaveNoise::mOperatorTypeNames = {
+	"[isotropic] Sum",
+	"[anisotropic] Sum - one direction", "[anisotropic] Sum - two directions",
+	"[cellular] Random polytopes", "[cellular] Cellular", "[cellular] Hyperplan", "[cellular] Reversed Cellular"
+};
+
+/**
  * Value type names
  */
 const std::vector< std::string > WaveNoise::mValueTypeNames = {
@@ -95,6 +104,7 @@ WaveNoise::WaveNoise()
 , spectralEnergyDistribution()
 , mValueType( WaveNoise::EValueType::eReal )
 , mWaveType( WaveNoise::EWaveType::eNoiseGaussian )
+, mOperatorType( WaveNoise::EOperatorType::eIsotropicSum )
 {
 }
 
