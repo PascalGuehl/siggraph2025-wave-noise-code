@@ -752,7 +752,7 @@ void Viewer::initializeNoise()
 	waveNoise->mWaveType = Wn::WaveNoise::EWaveType::eNoiseGaussian;
 	waveNoise->mOperatorType = Wn::WaveNoise::EOperatorType::eIsotropicSum;
 	waveNoise->setRatio( 64.0f );
-	waveNoise->mValueType = Wn::WaveNoise::EValueType::eReal;
+	waveNoise->mValueType = Wn::WaveNoise::EValueType::eRealPart;
 	waveNoise->setPower( 25.f );
 	waveNoise->contrast = 0.5;
 	waveNoise->setRecursionProbability( 0.5 );

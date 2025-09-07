@@ -57,8 +57,8 @@ public:
      */
     enum class EValueType
     {
-        eReal = 0,
-        eImaginary,
+        eRealPart = 0,
+        eImaginaryPart,
         eModulus,
         eArgument,
         eNbValueTypes

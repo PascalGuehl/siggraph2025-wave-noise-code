@@ -102,7 +102,7 @@ WaveNoise::WaveNoise()
 , tex( nullptr )
 , texd( nullptr )
 , spectralEnergyDistribution()
-, mValueType( WaveNoise::EValueType::eReal )
+, mValueType( WaveNoise::EValueType::eRealPart )
 , mWaveType( WaveNoise::EWaveType::eNoiseGaussian )
 , mOperatorType( WaveNoise::EOperatorType::eIsotropicSum )
 {
