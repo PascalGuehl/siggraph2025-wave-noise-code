@@ -119,6 +119,8 @@ private:
 	Wn::WaveNoise* waveNoise;
 	bool mUseContinuousAnimation;
 
+	float iRatio;
+
 	/******************************** METHODS *********************************/
 
 };

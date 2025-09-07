@@ -65,7 +65,7 @@ public:
     float Ffreq_high;
 
     int Ndir, Oper;
-    float Orient, Ratio, iRatio, Power, old_power, contrast, Anisodd;
+    float Orient, Power, old_power, contrast, Anisodd;
 
     int item_current, old_item;
     int complex_current;
@@ -138,6 +138,9 @@ public:
     float getZoom() const;
     void setZoom( float pValue );
 
+    float getRatio() const;
+    void setRatio( float pValue );
+
     // The user defined discrete spectral energy distribution used for noise control
     const std::vector< std::vector< double > >& getSpectralEnergyDistribution() const;
     std::vector< std::vector< double > >& editSpectralEnergyDistribution();
@@ -187,6 +190,11 @@ protected:
      * Zoom
      */
     float Zoom;
+
+    /**
+     * ...
+     */
+    float Ratio;
 
     // The user defined discrete spectral energy distribution used for noise control
     /**

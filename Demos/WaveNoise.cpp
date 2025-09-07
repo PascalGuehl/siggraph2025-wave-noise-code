@@ -70,6 +70,7 @@ WaveNoise::WaveNoise()
 , MAX_FREQ( 0 )
 , mTranslation( EZCOGL::GLVec3() )
 , Zoom( 0.f )
+, Ratio( 0.f )
 , tex( nullptr )
 , texd( nullptr )
 , spectralEnergyDistribution()
@@ -657,6 +658,22 @@ float WaveNoise::getZoom() const
 void WaveNoise::setZoom( float pValue )
 {
 	Zoom = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+float WaveNoise::getRatio() const
+{
+	return Ratio;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setRatio( float pValue )
+{
+	Ratio = pValue;
 }
 
 /******************************************************************************

@@ -703,6 +703,7 @@ Viewer::Viewer()
 , mQueryTimeElapsed( 0 )
 , mGPUTimeElapsed( 0 )
 , mUseContinuousAnimation( false )
+, iRatio( 0.f )
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
@@ -744,8 +745,7 @@ void Viewer::initializeNoise()
 	waveNoise->item_current = 0; // Gaussian
 	waveNoise->Oper = 0;		 // Isowave
 	waveNoise->old_item = 0;
-	waveNoise->Ratio = 64.0f;
-	waveNoise->iRatio = 6;
+	waveNoise->setRatio( 64.0f );
 	waveNoise->complex_current = 0;
 	waveNoise->Power = 25.0;
 	waveNoise->old_power = 1.0;
@@ -789,10 +789,12 @@ void Viewer::init_ogl()
 	// Initialize the noise
 	initializeNoise();
 
+	// Initialize GUI
+	iRatio = std::log2f( waveNoise->getRatio() );
+
 	// Device timer
 	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
 }
-
 
 /******************************************************************************
  * ...
@@ -886,9 +888,8 @@ void Viewer::draw_ogl()
 		set_uniform_value( 21, current_time() );
 	}
 
-	waveNoise->Ratio = (float)pow( 2.0, waveNoise->iRatio );
-	set_uniform_value( 22, waveNoise->Ratio );
-	set_uniform_value( 19, waveNoise->getZoom() * waveNoise->Ratio );
+	set_uniform_value( 22, waveNoise->getRatio() );
+	set_uniform_value( 19, waveNoise->getZoom() * waveNoise->getRatio() );
 	set_uniform_value( 23, waveNoise->complex_current );
 	set_uniform_value( 24, waveNoise->contrast );
 	set_uniform_value( 30, waveNoise->Oper );
@@ -965,7 +966,10 @@ void Viewer::interface_ogl()
 			if (ImGui::TreeNode("Quality vs. Framerate"))
 			{
 				ImGui::SliderInt("NDir", &waveNoise->Ndir, 1, 100);
-				ImGui::SliderFloat("Slice size", &waveNoise->iRatio, 0.0, 8.0);
+				if ( ImGui::SliderFloat( "Slice size", &iRatio, 0.0, 8.0 ) )
+				{
+					waveNoise->setRatio( (float)pow( 2.0, iRatio ) );
+				}
 
 				ImGui::TreePop();
 			}
