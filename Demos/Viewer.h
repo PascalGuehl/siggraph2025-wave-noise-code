@@ -129,6 +129,7 @@ private:
 	float Ffreq_low;
 	float Ffreq_high;
 	float old_power;
+	int old_item;
 
 	/******************************** METHODS *********************************/
 

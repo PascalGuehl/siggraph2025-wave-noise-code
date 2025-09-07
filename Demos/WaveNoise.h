@@ -96,8 +96,6 @@ public:
     int Oper;
     float Orient, contrast, Anisodd;
 
-    int old_item;
-
     // Isotropic noise pre-computed arrays
     std::vector< std::vector< double > > fs;
     double vmax;

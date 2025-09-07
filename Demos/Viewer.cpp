@@ -709,6 +709,8 @@ Viewer::Viewer()
 , Ffreq_low( 0.f )
 , Ffreq_high( 0.f )
 , old_power( 0.f )
+, old_item( 0 )
+
 {
 	// Create and initialize noise
 	waveNoise = new Wn::WaveNoise();
@@ -749,7 +751,6 @@ void Viewer::initializeNoise()
 	waveNoise->setTime( 0.0f );
 	waveNoise->mWaveType = Wn::WaveNoise::EWaveType::eNoiseGaussian;
 	waveNoise->Oper = 0;		 // Isowave
-	waveNoise->old_item = 0;
 	waveNoise->setRatio( 64.0f );
 	waveNoise->mValueType = Wn::WaveNoise::EValueType::eReal;
 	waveNoise->setPower( 25.f );
@@ -800,6 +801,7 @@ void Viewer::init_ogl()
 	Ffreq_low = 1.0 / 64.0; // TODO: explain this value!
 	Ffreq_high = 32.0 / 64.0; // TODO: explain this value!
 	old_power = 1.f;
+	old_item = static_cast< int >( waveNoise->mWaveType );
 
 	// Device timer
 	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
@@ -828,12 +830,12 @@ void Viewer::updateNoise()
 
 	if ( waveNoise->getMinFrequency() != sFREQ_LOW ||
 		 waveNoise->getMaxFrequency() != sFREQ_HIGH ||
-		 static_cast< int >( waveNoise->mWaveType ) != waveNoise->old_item ||
+		 static_cast< int >( waveNoise->mWaveType ) != old_item ||
 		( static_cast< int >( waveNoise->mWaveType ) >= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianCrystal1 ) && old_power != waveNoise->getPower() ) )
 	{
 		sFREQ_LOW = waveNoise->getMinFrequency();
 		sFREQ_HIGH = waveNoise->getMaxFrequency();
-		waveNoise->old_item = static_cast< int >( waveNoise->mWaveType );
+		old_item = static_cast< int >( waveNoise->mWaveType );
 		old_power = waveNoise->getPower();
 		if ( static_cast< int >( waveNoise->mWaveType ) >= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianCrystal1 ) &&
 			 static_cast< int >( waveNoise->mWaveType ) <= static_cast< int >( Wn::WaveNoise::EWaveType::eNonGaussianSmoothCells ) )
