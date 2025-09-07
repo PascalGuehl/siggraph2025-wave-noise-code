@@ -772,13 +772,13 @@ void Viewer::init_ogl()
 	set_scene_radius(3.0 * mesh[0]->BB()->radius());
 	// set_scene_radius(50.f);
 
-	tex = Texture1D::create();
+	waveNoise->tex = Texture1D::create();
 	// tex->update(0, N, wprofile);
-	tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
+	waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
 
-	texd = Texture1D::create();
+	waveNoise->texd = Texture1D::create();
 	// tex->update(0, N, wprofile);
-	texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+	waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 
 	// Device timer
 	glCreateQueries( GL_TIME_ELAPSED, 1, &mQueryTimeElapsed );
@@ -824,17 +824,18 @@ void Viewer::draw_ogl()
 			waveNoise->createIsotropicProceduralEnergyDistri();
 			waveNoise->precomputePlanarWave( 4.0 );
 		}
-		tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
-		texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+		waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
+		waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
 	}
 
+	// Bind shader program
 	prg_p->bind();
 
 	// Bind textures
 	// - precomputed 1D wave profile
-	tex->bind( 0 );
+	waveNoise->tex->bind( 0 );
 	// - precomputed 1D wave gradient
-	texd->bind( 1 );
+	waveNoise->texd->bind( 1 );
 
 	// Model-View-Projection transforms
 	GLMat4 sc = Transfo::scale( 2.5 );

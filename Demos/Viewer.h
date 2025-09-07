@@ -60,12 +60,13 @@ class Viewer : public EZCOGL::GLViewer
 	std::vector< EZCOGL::MeshRenderer::UP > renderer_p;
 	int nbMeshParts;
 
-	EZCOGL::Texture1D::SP tex, texd;
-	
 	// GPU timer
 	GLuint mQueryTimeElapsed;
 	GLuint64 mGPUTimeElapsed;
 
+	/**
+	 * Wave noise
+	 */
 	Wn::WaveNoise* waveNoise;
 	bool mUseContinuousAnimation;
 

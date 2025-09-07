@@ -76,6 +76,16 @@ public:
     double vmin;
     std::vector< unsigned char > fs_cr;
     std::vector< unsigned char > fsd_cr;
+
+    /**
+     * 1D profile texture
+     */
+	EZCOGL::Texture1D::SP tex;
+
+    /**
+     * 1D profile's gradient texture
+     */
+    EZCOGL::Texture1D::SP texd;
    
     /******************************** METHODS *********************************/
         
@@ -177,16 +187,6 @@ protected:
      * Zoom
      */
     float Zoom;
-
-    /**
-     * 1D profile texture
-     */
-    EZCOGL::Texture1D::SP tex;
-
-    /**
-     * 1D profile's gradient texture
-     */
-    EZCOGL::Texture1D::SP texd;
 
     // The user defined discrete spectral energy distribution used for noise control
     /**
