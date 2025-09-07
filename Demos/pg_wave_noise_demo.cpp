@@ -1113,7 +1113,7 @@ bool Viewer::display1DProfileWidget()
 		{
 			const unsigned int MAX_FREQ = waveNoise->getMaximumFrequency();
 			const unsigned int directionIndex = 0;
-			const std::vector< std::vector< double > >& spectralEnergyDistribution = waveNoise->spectralEnergyDistribution;
+			const std::vector< std::vector< double > >& spectralEnergyDistribution = waveNoise->getSpectralEnergyDistribution();
 			const std::vector< double >& mfs = spectralEnergyDistribution[ directionIndex ];
 			std::vector< float > samples( MAX_FREQ );
 			for ( unsigned int n = 0; n < MAX_FREQ; n++ )

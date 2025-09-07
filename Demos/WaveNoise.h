@@ -76,10 +76,7 @@ public:
     double vmin;
     std::vector< unsigned char > fs_cr;
     std::vector< unsigned char > fsd_cr;
-
-    // The user defined discrete spectral energy distribution used for noise control
-    std::vector< std::vector< double > > spectralEnergyDistribution;
-    
+   
     /******************************** METHODS *********************************/
         
     /**
@@ -130,6 +127,11 @@ public:
 
     float getZoom() const;
     void setZoom( float pValue );
+
+    // The user defined discrete spectral energy distribution used for noise control
+    const std::vector< std::vector< double > >& getSpectralEnergyDistribution() const;
+    std::vector< std::vector< double > >& editSpectralEnergyDistribution();
+    void setSpectralEnergyDistribution( const std::vector< std::vector< double > >& pData );
 
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
@@ -185,6 +187,12 @@ protected:
      * 1D profile's gradient texture
      */
     EZCOGL::Texture1D::SP texd;
+
+    // The user defined discrete spectral energy distribution used for noise control
+    /**
+     * ...
+     */
+    std::vector< std::vector< double > > spectralEnergyDistribution;
 
     /******************************** METHODS *********************************/
 

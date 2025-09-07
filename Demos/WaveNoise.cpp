@@ -72,6 +72,7 @@ WaveNoise::WaveNoise()
 , Zoom( 0.f )
 , tex( nullptr )
 , texd( nullptr )
+, spectralEnergyDistribution()
 {
 }
 
@@ -656,4 +657,28 @@ float WaveNoise::getZoom() const
 void WaveNoise::setZoom( float pValue )
 {
 	Zoom = pValue;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+const std::vector< std::vector< double > >& WaveNoise::getSpectralEnergyDistribution() const
+{
+	return spectralEnergyDistribution;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+std::vector< std::vector< double > >& WaveNoise::editSpectralEnergyDistribution()
+{
+	return spectralEnergyDistribution;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::setSpectralEnergyDistribution( const std::vector< std::vector< double > >& pData )
+{
+	spectralEnergyDistribution = pData;
 }
