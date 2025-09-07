@@ -26,6 +26,7 @@
 
 // STL
 #include <vector>
+#include <string>
 
 /******************************************************************************
  ******************************** CLASS USED **********************************
@@ -51,6 +52,34 @@ public:
 
     /****************************** INNER TYPES *******************************/
 
+    /**
+     * Value type
+     */
+    enum class EValueType
+    {
+        eReal = 0,
+        eImaginary,
+        eModulus,
+        eArgument,
+        eNbValueTypes
+    };
+    EValueType mValueType;
+    static const std::vector< std::string > mValueTypeNames;
+
+    /**
+     * Wave type
+     */
+    enum class EWaveType
+    {
+        eReal = 0,
+        eImaginary,
+        eModulus,
+        eArgument,
+        eNbValueTypes
+    };
+    EWaveType mWaveType;
+    static const std::vector< std::string > mWaveTypeNames;
+
     /******************************* ATTRIBUTES *******************************/
 
     // precision of the pre-computed wave (sampling rate)
@@ -61,7 +90,6 @@ public:
     float Orient, contrast, Anisodd;
 
     int item_current, old_item;
-    int complex_current;
 
     // Isotropic noise pre-computed arrays
     std::vector< std::vector< double > > fs;

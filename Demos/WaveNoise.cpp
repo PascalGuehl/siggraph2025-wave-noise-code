@@ -55,6 +55,11 @@ using namespace std;
  ***************************** TYPE DEFINITION ********************************
  ******************************************************************************/
 
+ /**
+  * Value type names
+  */
+const std::vector< std::string > WaveNoise::mValueTypeNames = { "real", "imaginary", "modulus", "phasor" };
+
 /******************************************************************************
  ***************************** METHOD DEFINITION ******************************
  ******************************************************************************/
@@ -77,6 +82,7 @@ WaveNoise::WaveNoise()
 , tex( nullptr )
 , texd( nullptr )
 , spectralEnergyDistribution()
+, mValueType( WaveNoise::EValueType::eReal )
 {
 }
 

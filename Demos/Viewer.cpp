@@ -751,7 +751,7 @@ void Viewer::initializeNoise()
 	waveNoise->Oper = 0;		 // Isowave
 	waveNoise->old_item = 0;
 	waveNoise->setRatio( 64.0f );
-	waveNoise->complex_current = 0;
+	waveNoise->mValueType = Wn::WaveNoise::EValueType::eReal;
 	waveNoise->setPower( 25.f );
 	waveNoise->contrast = 0.5;
 	waveNoise->setRecursionProbability( 0.5 );
@@ -910,7 +910,7 @@ void Viewer::draw_ogl()
 
 	set_uniform_value( 22, waveNoise->getRatio() );
 	set_uniform_value( 19, waveNoise->getZoom() * waveNoise->getRatio() );
-	set_uniform_value( 23, waveNoise->complex_current );
+	set_uniform_value( 23, static_cast< int >( waveNoise->mValueType ) );
 	set_uniform_value( 24, waveNoise->contrast );
 	set_uniform_value( 30, waveNoise->Oper );
 
@@ -1050,10 +1050,25 @@ void Viewer::interface_ogl()
 			ImGui::PopItemWidth(); // remet la largeur par d�faut
 		}
 
-		if (ImGui::CollapsingHeader("Post-Processing & Display"))
+		if ( ImGui::CollapsingHeader( "Post-Processing & Display" ) )
 		{
-			const char* itemscplx[] = { "real", "imaginary", "modulus", "phasor" };
-			ImGui::Combo("Value", &waveNoise->complex_current, itemscplx, IM_ARRAYSIZE(itemscplx));
+			auto& valueTypeNames = Wn::WaveNoise::mValueTypeNames;
+			static std::vector< const char* > valueTypeItems; // built only once!
+			if ( valueTypeItems.size() != valueTypeNames.size() )
+			{
+				valueTypeItems.clear();
+				valueTypeItems.reserve( valueTypeNames.size() );
+				for ( auto& s : valueTypeNames )
+				{
+					valueTypeItems.push_back( s.c_str() );
+				}
+			}
+			int valueType = static_cast< int >( waveNoise->mValueType );
+			if ( ImGui::Combo( "Value", &valueType, valueTypeItems.data(), (int)valueTypeItems.size() ) )
+			{
+				waveNoise->mValueType = static_cast< Wn::WaveNoise::EValueType >( valueType );
+			}
+
 			ImGui::SliderFloat("Contrast", &waveNoise->contrast, 0.1f, 1.0f);
 		}
 
