@@ -38,7 +38,7 @@ endmacro()
 # ----------------------------------------------------------------------------------------
 
 macro(compile_demo)
-  add_executable(${ARGV0} ${ARGV0}.cpp WaveNoise.cpp WaveNoise.h hvPair.h)
+  add_executable(${ARGV0} ${ARGV0}.cpp Viewer.cpp Viewer.h WaveNoise.cpp WaveNoise.h hvPair.h)
   target_link_libraries(${ARGV0} easycppogl)
   
   #install(TARGETS ${ARGV0} DESTINATION bin)

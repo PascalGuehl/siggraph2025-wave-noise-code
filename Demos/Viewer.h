@@ -21,24 +21,24 @@
  ******************************* INCLUDE SECTION ******************************
  ******************************************************************************/
 
-// Project
-#include "Viewer.h"
+// EasyCppOGL
+#include <gl_viewer.h>
+#include <mesh.h>
+#include <shader_program.h>
+#include <texture1d.h>
 
 /******************************************************************************
  ****************************** NAMESPACE SECTION *****************************
  ******************************************************************************/
 
+namespace Wn
+{
+	class WaveNoise;
+}
+
 /******************************************************************************
  ************************* DEFINE AND CONSTANT SECTION ************************
  ******************************************************************************/
-
-// NVIDIA Optimus
-// A key feature of Optimus configurations is to support rendering applications using NVIDIA High Performance Graphics while displaying on monitors connected to the Integrated Graphics.
-// https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
-extern "C"
-{
-	__declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
-}
 
 /******************************************************************************
  ***************************** TYPE DEFINITION ********************************
@@ -48,19 +48,38 @@ extern "C"
  ***************************** METHOD DEFINITION ******************************
  ******************************************************************************/
 
+//////////////////////////////////////////////////////////////////////////////////////
+//  MAIN  VIEWER
+//////////////////////////////////////////////////////////////////////////////////////
 
-/******************************************************************************
- * Main entry program
- *
- * @param pArgc Number of arguments
- * @param pArgv List of arguments
- *
- * @return flag telling whether or not it succeeds
- ******************************************************************************/
-int main( int, char** )
+// Creation du VIEWER
+class Viewer : public EZCOGL::GLViewer
 {
-	Viewer v;
-	v.set_size( 1800, 1000 );
+	EZCOGL::ShaderProgram::UP prg_p;
+	
+	std::vector< EZCOGL::MeshRenderer::UP > renderer_p;
+	int nbMeshParts;
 
-	return v.launch3d();
-}
+	EZCOGL::Texture1D::SP tex, texd;
+	
+	// GPU timer
+	GLuint mQueryTimeElapsed;
+	GLuint64 mGPUTimeElapsed;
+
+	Wn::WaveNoise* waveNoise;
+	bool mUseContinuousAnimation;
+
+public:
+
+	Viewer();
+	~Viewer();
+
+	void init_ogl() override;
+	void draw_ogl() override;
+	void interface_ogl() override;
+
+	bool display1DProfileWidget();
+	void displayPeformance();
+
+	void setTitle( const char* pText );
+};
