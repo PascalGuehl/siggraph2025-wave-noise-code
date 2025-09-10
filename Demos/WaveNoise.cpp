@@ -102,6 +102,7 @@ WaveNoise::WaveNoise()
 , tex( nullptr )
 , texd( nullptr )
 , spectralEnergyDistribution()
+, fs()
 , mValueType( WaveNoise::EValueType::eRealPart )
 , mWaveType( WaveNoise::EWaveType::eNoiseGaussian )
 , mOperatorType( WaveNoise::EOperatorType::eIsotropicSum )
@@ -569,6 +570,15 @@ void WaveNoise::precomputePlanarWaveFromFFT1D( double* A, int N, int pow_2 )
 /******************************************************************************
  * ...
  ******************************************************************************/
+void WaveNoise::updateTextures()
+{
+	tex->alloc( NARRAY, GL_RGB8, fs_cr.data() );
+	texd->alloc( NARRAY, GL_RGB8, fsd_cr.data() );
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
 int WaveNoise::getNbOrientations() const
 {
 	return Ndir;
@@ -773,4 +783,28 @@ std::vector< std::vector< double > >& WaveNoise::editSpectralEnergyDistribution(
 void WaveNoise::setSpectralEnergyDistribution( const std::vector< std::vector< double > >& pData )
 {
 	spectralEnergyDistribution = pData;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+const std::vector< std::vector< double > >& WaveNoise::get1DWaveProfiles() const
+{
+	return fs;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+std::vector< std::vector< double > >& WaveNoise::edit1DWaveProfiles()
+{
+	return fs;
+}
+
+/******************************************************************************
+ * ...
+ ******************************************************************************/
+void WaveNoise::set1DWaveProfiles( const std::vector< std::vector< double > >& pData )
+{
+	fs = pData;
 }

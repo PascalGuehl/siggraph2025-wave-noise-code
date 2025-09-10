@@ -765,10 +765,9 @@ void Viewer::initializeNoise()
 
 	// Wave 1D profile
 	waveNoise->tex = Texture1D::create();
-	waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
 	// Wave 1D profile's gradient
 	waveNoise->texd = Texture1D::create();
-	waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+	waveNoise->updateTextures();
 }
 
 /******************************************************************************
@@ -857,8 +856,7 @@ void Viewer::updateNoise()
 			waveNoise->createIsotropicProceduralEnergyDistri();
 			waveNoise->precomputePlanarWave( 4.0 );
 		}
-		waveNoise->tex->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fs_cr.data() );
-		waveNoise->texd->alloc( waveNoise->NARRAY, GL_RGB8, waveNoise->fsd_cr.data() );
+		waveNoise->updateTextures();
 	}
 }
 
@@ -1176,7 +1174,7 @@ bool Viewer::display1DProfileWidget()
 		// Display pre-computed 1D wave
 		{
 			const unsigned int mNARRAY = waveNoise->NARRAY;
-			const std::vector< std::vector< double > >& mfs = waveNoise->fs;
+			const std::vector< std::vector< double > >& mfs = waveNoise->get1DWaveProfiles();
 			std::vector< float > samples( mNARRAY );
 			for ( unsigned int n = 0; n < mNARRAY; n++ )
 			{

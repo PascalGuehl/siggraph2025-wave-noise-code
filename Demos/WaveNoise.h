@@ -114,13 +114,6 @@ public:
 
     float Orient, contrast, Anisodd;
 
-    // Isotropic noise pre-computed arrays
-    std::vector< std::vector< double > > fs;
-    double vmax;
-    double vmin;
-    std::vector< unsigned char > fs_cr;
-    std::vector< unsigned char > fsd_cr;
-
     /**
      * 1D profile texture
      */
@@ -199,6 +192,15 @@ public:
     std::vector< std::vector< double > >& editSpectralEnergyDistribution();
     void setSpectralEnergyDistribution( const std::vector< std::vector< double > >& pData );
 
+    /**
+     * List of 1D wave profiles
+     */
+    const std::vector< std::vector< double > >& get1DWaveProfiles() const;
+    std::vector< std::vector< double > >& edit1DWaveProfiles();
+    void set1DWaveProfiles( const std::vector< std::vector< double > >& pData );
+
+    void updateTextures();
+
     /**************************************************************************
      **************************** PROTECTED SECTION ***************************
      **************************************************************************/
@@ -208,6 +210,13 @@ protected:
     /****************************** INNER TYPES *******************************/
 
     /******************************* ATTRIBUTES *******************************/
+
+    // Isotropic noise pre-computed arrays
+    std::vector< std::vector< double > > fs;
+    double vmax;
+    double vmin;
+    std::vector< unsigned char > fs_cr;
+    std::vector< unsigned char > fsd_cr;
 
     /**
      * Number of orientations
