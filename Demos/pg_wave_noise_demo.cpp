@@ -24,6 +24,9 @@
 // Project
 #include "Viewer.h"
 
+// STL
+#include <string>
+
 /******************************************************************************
  ****************************** NAMESPACE SECTION *****************************
  ******************************************************************************/
@@ -60,6 +63,9 @@ extern "C"
 int main( int, char** )
 {
 	Viewer v;
+
+	const std::string windowTitle = "Multi-Dimensional Procedural Wave Noise";
+	v.setTitle( windowTitle.c_str() );
 	v.set_size( 1800, 1000 );
 
 	return v.launch3d();
