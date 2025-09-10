@@ -731,7 +731,7 @@ Viewer::~Viewer()
 void Viewer::setTitle( const char* pText )
 {
 	GLFWwindow* w = window();
-	glfwSetWindowTitle( w, "Multi-Dimensional Procedural Wave Noise" );
+	glfwSetWindowTitle( w, pText );
 }
 
 /******************************************************************************
