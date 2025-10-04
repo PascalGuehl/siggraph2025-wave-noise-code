@@ -69,7 +69,7 @@ protected:
 
 public:
 
-	GLViewer();
+	GLViewer( bool pUseOffscreenMode = false );
 
 	virtual ~GLViewer();
 

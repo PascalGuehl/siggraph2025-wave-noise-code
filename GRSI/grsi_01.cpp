@@ -109,6 +109,7 @@ int main(int, char**)
 }
 
 Viewer::Viewer()
+	: GLViewer( true/*use offscreenn mode*/)
 {}
 
 

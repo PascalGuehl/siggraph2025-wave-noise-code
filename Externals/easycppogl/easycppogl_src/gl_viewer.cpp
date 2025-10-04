@@ -45,7 +45,8 @@ void GLViewer::set_size(int w, int h)
 	glfwSetWindowSize(window_,w,h);
 }
 
-GLViewer::GLViewer():
+GLViewer::GLViewer( bool pUseOffscreenMode )
+	:
 	locked_(true),
 	need_redraw_(true),
 	wheel_sensitivity_(0.0005),
@@ -70,6 +71,14 @@ GLViewer::GLViewer():
 	if (!glfwInit())
 	{
 		std::cerr << "Failed to initialize GFLW!" << std::endl;
+	}
+
+	// Offscreen contexts
+	// GLFW doesn't support creating contexts without an associated window.
+	// However, contexts with hidden windows can be created with the GLFW_VISIBLE window hint.
+	if ( pUseOffscreenMode )
+	{
+		glfwWindowHint( GLFW_VISIBLE, GLFW_FALSE );
 	}
 
 	const char* glsl_version = "#version 330";
